@@ -7,12 +7,18 @@ from astropy import table
 from astropy import coordinates
 from astropy.coordinates import SkyCoord
 from astropy import units as u
+from astropy.stats import sigma_clipped_stats
+from astropy import wcs
+from astropy.wcs import WCS
 
 from astroquery.vizier import Vizier
 from astroquery.svo_fps import SvoFps
 
+import photutils
+
 from spectral_cube import SpectralCube
 import os
+import glob
 
 # load up ALMA-IMF metadata
 import sys
@@ -83,6 +89,7 @@ def find_ALMAIMF_matches(tbl):
         finaliter_prefix_b6="W43-MM2/B6/cleanest/W43-MM2_B6_uid___A001_X1296_X113_continuum_merged_12M_robust0_selfcal5_finaliter",)
 
     all_matches = np.zeros(len(tbl), dtype='bool')
+    fieldids = np.empty(len(tbl), dtype='S8')
 
     for fieldid, pfxs in prefixes.items():
         cube = SpectralCube.read(pfxs['finaliter_prefix_b3']+".image.tt0.fits", format='fits', use_dask=False).minimal_subcube()
@@ -90,8 +97,10 @@ def find_ALMAIMF_matches(tbl):
         ww._naxis = cube.shape[1:]
         matches = ww.footprint_contains(coords)
         all_matches |= matches
+        fieldids[matches] = fieldid
 
     tbl['in_ALMAIMF'] = all_matches
+    tbl['ALMAIMF_FIELDID'] = fieldids
     return tbl
 
 
@@ -286,42 +295,49 @@ def add_alma_photometry(tbl, aperture_radius=3*u.arcsec,
                         basepath='/orange/adamginsburg/ALMA_IMF/2017.1.01355.L/RestructuredImagingResults',
                         band='b3', wlname='3mm'):
 
-    cube = SpectralCube.read(basepath + '/' + pfxs[f'finaliter_prefix_{band}']+".image.tt0.fits",
-                         format='fits', use_dask=False).minimal_subcube()
-    alma_rms = cube.mad_std()
+    tbl[f'ALMA-IMF_{wlname}_flux'] = np.zeros(len(tbl), dtype='float')
+    tbl[f'ALMA-IMF_{wlname}_eflux'] = np.zeros(len(tbl), dtype='float')
 
-    ww = cube.wcs.celestial
-    ww._naxis = cube.shape[1:]
+    for fieldid in np.unique(tbl['ALMAIMF_FIELDID']):
+        pfxs = prefixes[fieldid]
+        cube = SpectralCube.read(basepath + '/' + pfxs[f'finaliter_prefix_{band}']+".image.tt0.fits",
+                             format='fits', use_dask=False).minimal_subcube()
+        alma_rms = cube.mad_std()
 
-    crds = SkyCoord(tbl['ra'], tbl['dec'])
-    sky_apertures = photutils.aperture.SkyCircularAperture(crds, aperture_radius)
-    apertures = sky_apertures.to_pixel(ww)
+        ww = cube.wcs.celestial
+        ww._naxis = cube.shape[1:]
 
-    sky_annulus_aperture = photutils.aperture.SkyCircularAnnulus(crds, r_in=annulus_inner, r_out=annulus_outer)
-    annulus_apertures = sky_annulus_aperture.to_pixel(ww)
+        match = tbl['ALMAIMF_FIELDID'] == fieldid
 
-    annulus_masks = annulus_apertures.to_mask(method='center')
-    data = cube[0]
+        crds = SkyCoord(tbl['ra'], tbl['dec'])[match]
+        sky_apertures = photutils.aperture.SkyCircularAperture(crds, aperture_radius)
+        apertures = sky_apertures.to_pixel(ww)
 
-    bkg_median = []
-    for mask in annulus_masks:
-        annulus_data = mask.multiply(data)
-        if annulus_data is None:
-            bkg_median.append(np.nan * data.unit)
-            continue
-        annulus_data_1d = annulus_data[mask.data != 0]
-        _, median_sigclip, _ = sigma_clipped_stats(annulus_data_1d)
-        bkg_median.append(median_sigclip)
-    bkg_median = u.Quantity(bkg_median)
-    phot = photutils.aperture_photometry(data, apertures)
-    phot['annulus_median'] = bkg_median
-    phot['aper_bkg'] = bkg_median * apertures.area
-    phot['aper_sum_bkgsub'] = phot['aperture_sum'] - phot['aper_bkg']
-    phot['flux'] = phot['aper_sum_bkgsub'] / cube.pixels_per_beam * u.beam
-    phot['significant'] = phot['flux'] > 3 * alma_rms*u.beam
+        sky_annulus_aperture = photutils.aperture.SkyCircularAnnulus(crds, r_in=annulus_inner, r_out=annulus_outer)
+        annulus_apertures = sky_annulus_aperture.to_pixel(ww)
 
-    tbl[f'ALMA-IMF_{wlname}_flux'] = np.where(phot['significant'], phot['flux'], np.nan)
-    tbl[f'ALMA-IMF_{wlname}_eflux'] = alma_rms
+        annulus_masks = annulus_apertures.to_mask(method='center')
+        data = cube[0]
+
+        bkg_median = []
+        for mask in annulus_masks:
+            annulus_data = mask.multiply(data)
+            if annulus_data is None:
+                bkg_median.append(np.nan * data.unit)
+                continue
+            annulus_data_1d = annulus_data[mask.data != 0]
+            _, median_sigclip, _ = sigma_clipped_stats(annulus_data_1d)
+            bkg_median.append(median_sigclip)
+        bkg_median = u.Quantity(bkg_median)
+        phot = photutils.aperture_photometry(data, apertures)
+        phot['annulus_median'] = bkg_median
+        phot['aper_bkg'] = bkg_median * apertures.area
+        phot['aper_sum_bkgsub'] = phot['aperture_sum'] - phot['aper_bkg']
+        phot['flux'] = phot['aper_sum_bkgsub'] / cube.pixels_per_beam * u.beam
+        phot['significant'] = phot['flux'] > 3 * alma_rms*u.beam
+
+        tbl[f'ALMA-IMF_{wlname}_flux'][match] = np.where(phot['significant'], phot['flux'], np.nan)
+        tbl[f'ALMA-IMF_{wlname}_eflux'][match] = alma_rms
 
     return tbl
 
@@ -334,19 +350,19 @@ def get_flx(crd, data, ww):
     return data[ypix, xpix]
 
 
-def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500]):
+def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orange/adamginsburg/higal/'):
     rows = []
     for crd in coords.galactic:
-        gal = int(crd.gal)
+        galrnd = int(crd.galactic.l.deg)
         # search +/- 2 deg:
-        for gal in np.array([0,-1,1,-2,2]) + int(crd.gal):
-            files = glob.glob(f'Field{gal}*.fits*')
+        for gal in np.array([0,-1,1,-2,2]) + int(galrnd):
+            files = glob.glob(f'{higalpath}/Field{gal}*.fits*')
             if any(files):
                 fh = fits.open(files[0])[1]
                 ww = wcs.WCS(fh.header)
                 if ww.footprint_contains(crd):
                     flx = {fn.split("Parallel")[1].split("_")[0]:
-                           get_flx(crd, fits.getdata(fn, hdu=1), wcs.WCS(fits.getheader(fn, hdu=1)))
+                           get_flx(crd, fits.getdata(fn, ext=1), wcs.WCS(fits.getheader(fn, ext=1)))
                            for fn in files}
                     break
         rows.append(flx)
@@ -363,9 +379,10 @@ if __name__ == "__main__":
     tbl = fulltbl[tblmsk]
     coords = coords[tblmsk]
 
+    tbl = add_herschel_limits(tbl, coords)
     tbl = add_MIPS_matches(tbl)
     tbl = add_VVV_matches(tbl)
     tbl = add_alma_photometry(tbl, band='b3', wlname='3mm')
     tbl = add_alma_photometry(tbl, band='b6', wlname='1mm')
-    tbl = add_herschel_limits(tbl, coords)
 
+    tbl.write('SPICY_withAddOns.fits', overwrite=True)

@@ -356,6 +356,7 @@ def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orang
     rows = []
     for crd in tqdm.tqdm(coords.galactic):
         galrnd = int(crd.galactic.l.deg)
+        flx = {wl: np.nan for wl in wls}
         # search +/- 2 deg:
         for gal in np.array([0,-1,1,-2,2]) + int(galrnd):
             files = glob.glob(f'{higalpath}/Field{gal}_*.fits*') + glob.glob(f"{higalpath}/l{gal}_*.fits*")
@@ -363,12 +364,19 @@ def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orang
                 fh = fits.open(files[0])[1]
                 ww = wcs.WCS(fh.header)
                 if ww.footprint_contains(crd):
-                    flx = {int(fn.split("Parallel")[1].split("_")[1]):
+                    flx_ = {int(fn.split("Parallel")[1].split("_")[1]):
                            get_flx(crd, fits.getdata(fn, ext=1), wcs.WCS(fits.getheader(fn, ext=1)))
                            for fn in files
                            if wcs.WCS(fits.getheader(fn, ext=1)).footprint_contains(crd)
                           }
-                    if flx[70] == 0 or np.isnan(flx[250]):
+                    if flx_[70] != 0:
+                        flx[70] = flx_[70]
+                        flx[160] = flx_[160]
+                    if not np.isnan(flx_[250]):
+                        flx[250] = flx_[250]
+                        flx[350] = flx_[350]
+                        flx[500] = flx_[500]
+                    if flx[70] == 0 or np.isnan(flx[70]) or np.isnan(flx[250]):
                         # wrong field?
                         print(f"Failed match between {crd} and {files[0]}")
                         continue

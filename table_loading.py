@@ -16,6 +16,8 @@ from astroquery.svo_fps import SvoFps
 
 import photutils
 
+import tqdm
+
 from spectral_cube import SpectralCube
 import os
 import glob
@@ -25,7 +27,7 @@ import sys
 sys.path.append('/orange/adamginsburg/ALMA_IMF/reduction/analysis/')
 from spectralindex import prefixes
 import spitzer_plots
-from spitzer_plots import show_fov_on_spitzer, contour_levels
+from spitzer_plots import show_fov_on_spitzer, contour_levels, get_spitzer_data
 
 from sedfitter.filter import Filter
 from sedfitter.extinction import Extinction
@@ -36,7 +38,7 @@ from dust_extinction.parameter_averages import F19
 geometries = ["s---s-i", "s---smi", "sp--s-i", "sp--h-i", "s---smi", "s-p-smi",
               "s-p-hmi", "s-pbsmi", "s-pbhmi", "s-u-smi", "s-u-hmi", "s-ubsmi",
               "spu-smi", "spu-hmi", "spubsmi", "spubhmi",]
-              
+
 
 def get_spicy_tbl():
     tbl = Table.read('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF/table1.fits')
@@ -352,26 +354,82 @@ def get_flx(crd, data, ww):
 
 def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orange/adamginsburg/higal/'):
     rows = []
-    for crd in coords.galactic:
+    for crd in tqdm.tqdm(coords.galactic):
         galrnd = int(crd.galactic.l.deg)
         # search +/- 2 deg:
         for gal in np.array([0,-1,1,-2,2]) + int(galrnd):
-            files = glob.glob(f'{higalpath}/Field{gal}*.fits*')
+            files = glob.glob(f'{higalpath}/Field{gal}_*.fits*') + glob.glob(f"{higalpath}/l{gal}_*.fits*")
             if any(files):
                 fh = fits.open(files[0])[1]
                 ww = wcs.WCS(fh.header)
                 if ww.footprint_contains(crd):
-                    flx = {fn.split("Parallel")[1].split("_")[0]:
+                    flx = {int(fn.split("Parallel")[1].split("_")[1]):
                            get_flx(crd, fits.getdata(fn, ext=1), wcs.WCS(fits.getheader(fn, ext=1)))
                            for fn in files
                            if wcs.WCS(fits.getheader(fn, ext=1)).footprint_contains(crd)
                           }
-                    break
+                    if flx[70] == 0 and np.isnan(flx[250]):
+                        # wrong field?
+                        print(f"Failed match between {crd} and {files[0]}")
+                        continue
+                    else:
+                        break
         rows.append(flx)
+
+    # use the last successful one
+    units = {int(fn.split("Parallel")[1].split("_")[1]): fits.getheader(fn,
+                                                                        ext=1)['BUNIT']
+             for fn in files if wcs.WCS(fits.getheader(fn,
+                                                       ext=1)).footprint_contains(crd)
+            }
+
     columns = {wl: [row[wl] for row in rows] for wl in wls}
-    tbl.add_columns(columns)
+    for name, data in columns.items():
+        tbl.add_column(table.Column(name=name, data=data, unit=units[name]))
     return tbl
-            
+
+#def add_mips_limits(tbl, coords):
+#
+#    m24_flux = []
+#    for crd in tqdm.tqdm(coords):
+#        spitzer_files = get_spitzer_data(crd.fk5, 3*u.arcmin)
+#        mg = spitzer_files['MG'][0]
+#        ww = wcs.WCS(mg.header)
+#        flx = get_flx(crd, mg.data, ww)
+#        m24_flux.append(flx)
+#
+#    bunit = mg.header['BUNIT']
+#
+#    tbl.add_column(table.Column(name='M24_flux', data=m24_flux, unit=bunit))
+#
+#    return tbl
+#
+
+def add_mips_limits(tbl, coords, mipspath='/orange/adamginsburg/spitzer/mips/'):
+
+    footprints = {fn: wcs.WCS(fits.getheader(fn)) for fn in glob.glob(f"{mipspath}/MG[0-9][0-9][0-9][0-9][pn][0-9][0-9][0-9]_024.fits")}
+
+    debug_counter = 0
+
+    rows = []
+    for crd in tqdm.tqdm(coords.galactic):
+        match = False
+        for fn, ww in footprints.items():
+            if ww.footprint_contains(crd):
+                flx = get_flx(crd, fits.getdata(fn), ww)
+                rows.append(flx)
+                match = True
+                break
+        if not match:
+            rows.append(np.nan)
+
+    # use the last successful one
+    units = fits.getheader(fn)['BUNIT']
+
+    tbl.add_column(table.Column(name='M24_flux_uplim', data=rows, unit=units))
+
+    return tbl
+
 
 if __name__ == "__main__":
 
@@ -381,9 +439,15 @@ if __name__ == "__main__":
     tbl = fulltbl[tblmsk]
     coords = coords[tblmsk]
 
+    print("Adding Herschel data")
     tbl = add_herschel_limits(tbl, coords)
+    print("Adding MIPS match data")
     tbl = add_MIPS_matches(tbl)
+    print("Adding MIPS limit data")
+    tbl = add_mips_limits(tbl, coords)
+    print("Adding VVV data")
     tbl = add_VVV_matches(tbl)
+    print("Adding ALMA-IMF photometry")
     tbl = add_alma_photometry(tbl, band='b3', wlname='3mm')
     tbl = add_alma_photometry(tbl, band='b6', wlname='1mm')
 

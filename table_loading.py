@@ -344,7 +344,7 @@ def add_alma_photometry(tbl, aperture_radius=3*u.arcsec,
 
 def get_flx(crd, data, ww):
     crd = crd.transform_to(ww.wcs.radesys.lower())
-    xpix, ypix = ww.all_world2pix(crd.spherical.lon, crd.spherical.lat, 0)
+    xpix, ypix = ww.world_to_pixel(crd)
     xpix = int(np.round(xpix))
     ypix = int(np.round(ypix))
     return data[ypix, xpix]
@@ -363,7 +363,9 @@ def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orang
                 if ww.footprint_contains(crd):
                     flx = {fn.split("Parallel")[1].split("_")[0]:
                            get_flx(crd, fits.getdata(fn, ext=1), wcs.WCS(fits.getheader(fn, ext=1)))
-                           for fn in files}
+                           for fn in files
+                           if wcs.WCS(fits.getheader(fn, ext=1)).footprint_contains(crd)
+                          }
                     break
         rows.append(flx)
     columns = {wl: [row[wl] for row in rows] for wl in wls}

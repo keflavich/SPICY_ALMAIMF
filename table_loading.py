@@ -368,7 +368,7 @@ def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orang
                            for fn in files
                            if wcs.WCS(fits.getheader(fn, ext=1)).footprint_contains(crd)
                           }
-                    if flx[70] == 0 and np.isnan(flx[250]):
+                    if flx[70] == 0 or np.isnan(flx[250]):
                         # wrong field?
                         print(f"Failed match between {crd} and {files[0]}")
                         continue

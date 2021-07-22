@@ -16,8 +16,6 @@ from astroquery.svo_fps import SvoFps
 
 import photutils
 
-import tqdm
-
 from spectral_cube import SpectralCube
 import os
 import glob
@@ -27,7 +25,7 @@ import sys
 sys.path.append('/orange/adamginsburg/ALMA_IMF/reduction/analysis/')
 from spectralindex import prefixes
 import spitzer_plots
-from spitzer_plots import show_fov_on_spitzer, contour_levels, get_spitzer_data
+from spitzer_plots import show_fov_on_spitzer, contour_levels
 
 from sedfitter.filter import Filter
 from sedfitter.extinction import Extinction
@@ -38,7 +36,7 @@ from dust_extinction.parameter_averages import F19
 geometries = ["s---s-i", "s---smi", "sp--s-i", "sp--h-i", "s---smi", "s-p-smi",
               "s-p-hmi", "s-pbsmi", "s-pbhmi", "s-u-smi", "s-u-hmi", "s-ubsmi",
               "spu-smi", "spu-hmi", "spubsmi", "spubhmi",]
-
+              
 
 def get_spicy_tbl():
     tbl = Table.read('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF/table1.fits')
@@ -126,13 +124,6 @@ def show_source_on_spitzer(fieldid, coords,
     ax.plot(cc.fk5.ra.deg, cc.fk5.dec.deg, 'wo', mfc='none', mec='w', markersize=10, transform=ax.get_transform('fk5'), )
 
 
-# hacky function to extract the rows of an SED table as a plottable entry
-def getrow(tb, rownum, keys=['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0']):
-    return np.array([tb[rownum][key] for key in keys])
-
-
-magcols = ['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0']
-emagcols = ['Yell', 'Zell', 'Jell', 'Hell', 'KsEll','e_mag3_6', 'e_mag4_5', 'e_mag5_8', 'e_mag8_0']
 
 
 def get_filters():
@@ -213,7 +204,7 @@ def get_filters():
     wavelength_dict['ALMA-IMF_1mm'] = (228.15802*u.GHz).to(u.um, u.spectral())
     wavelength_dict['ALMA-IMF_3mm'] = (99.68314596*u.GHz).to(u.um, u.spectral())
 
-    return sed_filters, wavelength_dict, filternames
+    return sed_filters, wavelength_dict, filternames, zpts
 
 def make_extinction():
     # make an extinction law
@@ -231,7 +222,7 @@ def make_extinction():
     return extinction
 
 
-sed_filters, wavelength_dict, filternames = get_filters()
+sed_filters, wavelength_dict, filternames, zpts = get_filters()
 
 def fit_a_source(data, error, valid,
     geometry='s-ubhmi', robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
@@ -266,6 +257,32 @@ def fit_a_source(data, error, valid,
     fitinfo = fitter.fit(source)
 
     return fitinfo
+
+magcols = ['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0']
+emagcols = ['Yell', 'Zell', 'Jell', 'Hell', 'KsEll','e_mag3_6', 'e_mag4_5', 'e_mag5_8', 'e_mag8_0']
+
+
+def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
+ 
+    # convert magnitudes to fluxes now
+    # (it's a pain to try to deal with a mix of magnitudes & fluxes)
+    for colname, errcolname, zpn in zip(magcols, emagcols, filternames):
+        print(colname, zpn)
+        zp = u.Quantity(zpts[zpn], u.Jy)
+        data = tbl[colname].value
+        if hasattr(tbl[colname], 'mask'):
+            tbl[zpn+"_flux"] = flx = np.ma.masked_where(tbl[colname].mask, (zp * 10**(data/-2.5)).to(u.mJy))
+        else:
+            tbl[zpn+"_flux"] = flx = (zp * 10**(data/-2.5)).to(u.mJy)
+        err = tbl[errcolname] / 1.09 * flx
+        tbl[zpn+"_eflux"] = err
+
+    return tbl
+
+
+# hacky function to extract the rows of an SED table as a plottable entry
+def getrow(tb, rownum, keys=['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0', 'S24', '70', '160', '250', '350', '500', 'ALMA-IMF_1mm_flux', 'ALMA-IMF_3mm_flux']):
+    return np.array([tb[rownum][key] for key in keys])
 
 
 def get_data_to_fit(rownumber, tbl, filters=filternames):
@@ -354,90 +371,26 @@ def get_flx(crd, data, ww):
 
 def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orange/adamginsburg/higal/'):
     rows = []
-    for crd in tqdm.tqdm(coords.galactic):
+    for crd in coords.galactic:
         galrnd = int(crd.galactic.l.deg)
-        flx = {wl: np.nan for wl in wls}
         # search +/- 2 deg:
         for gal in np.array([0,-1,1,-2,2]) + int(galrnd):
-            files = glob.glob(f'{higalpath}/Field{gal}_*.fits*') + glob.glob(f"{higalpath}/l{gal}_*.fits*")
+            files = glob.glob(f'{higalpath}/Field{gal}*.fits*')
             if any(files):
                 fh = fits.open(files[0])[1]
                 ww = wcs.WCS(fh.header)
                 if ww.footprint_contains(crd):
-                    flx_ = {int(fn.split("Parallel")[1].split("_")[1]):
+                    flx = {fn.split("Parallel")[1].split("_")[0]:
                            get_flx(crd, fits.getdata(fn, ext=1), wcs.WCS(fits.getheader(fn, ext=1)))
                            for fn in files
                            if wcs.WCS(fits.getheader(fn, ext=1)).footprint_contains(crd)
                           }
-                    if flx_[70] != 0:
-                        flx[70] = flx_[70]
-                        flx[160] = flx_[160]
-                    if not np.isnan(flx_[250]):
-                        flx[250] = flx_[250]
-                        flx[350] = flx_[350]
-                        flx[500] = flx_[500]
-                    if flx[70] == 0 or np.isnan(flx[70]) or np.isnan(flx[250]):
-                        # wrong field?
-                        print(f"Failed match between {crd} and {files[0]}")
-                        continue
-                    else:
-                        break
+                    break
         rows.append(flx)
-
-    # use the last successful one
-    units = {int(fn.split("Parallel")[1].split("_")[1]): fits.getheader(fn,
-                                                                        ext=1)['BUNIT']
-             for fn in files if wcs.WCS(fits.getheader(fn,
-                                                       ext=1)).footprint_contains(crd)
-            }
-
     columns = {wl: [row[wl] for row in rows] for wl in wls}
-    for name, data in columns.items():
-        tbl.add_column(table.Column(name=name, data=data, unit=units[name]))
+    tbl.add_columns(columns)
     return tbl
-
-#def add_mips_limits(tbl, coords):
-#
-#    m24_flux = []
-#    for crd in tqdm.tqdm(coords):
-#        spitzer_files = get_spitzer_data(crd.fk5, 3*u.arcmin)
-#        mg = spitzer_files['MG'][0]
-#        ww = wcs.WCS(mg.header)
-#        flx = get_flx(crd, mg.data, ww)
-#        m24_flux.append(flx)
-#
-#    bunit = mg.header['BUNIT']
-#
-#    tbl.add_column(table.Column(name='M24_flux', data=m24_flux, unit=bunit))
-#
-#    return tbl
-#
-
-def add_mips_limits(tbl, coords, mipspath='/orange/adamginsburg/spitzer/mips/'):
-
-    footprints = {fn: wcs.WCS(fits.getheader(fn)) for fn in glob.glob(f"{mipspath}/MG[0-9][0-9][0-9][0-9][pn][0-9][0-9][0-9]_024.fits")}
-
-    debug_counter = 0
-
-    rows = []
-    for crd in tqdm.tqdm(coords.galactic):
-        match = False
-        for fn, ww in footprints.items():
-            if ww.footprint_contains(crd):
-                flx = get_flx(crd, fits.getdata(fn), ww)
-                rows.append(flx)
-                match = True
-                break
-        if not match:
-            rows.append(np.nan)
-
-    # use the last successful one
-    units = fits.getheader(fn)['BUNIT']
-
-    tbl.add_column(table.Column(name='M24_flux_uplim', data=rows, unit=units))
-
-    return tbl
-
+            
 
 if __name__ == "__main__":
 
@@ -447,16 +400,26 @@ if __name__ == "__main__":
     tbl = fulltbl[tblmsk]
     coords = coords[tblmsk]
 
-    print("Adding Herschel data")
     tbl = add_herschel_limits(tbl, coords)
-    print("Adding MIPS match data")
     tbl = add_MIPS_matches(tbl)
-    print("Adding MIPS limit data")
-    tbl = add_mips_limits(tbl, coords)
-    print("Adding VVV data")
     tbl = add_VVV_matches(tbl)
-    print("Adding ALMA-IMF photometry")
     tbl = add_alma_photometry(tbl, band='b3', wlname='3mm')
     tbl = add_alma_photometry(tbl, band='b6', wlname='1mm')
+
+    tbl = mag_to_flux(tbl)
+
+    # rename some columns for convenience later
+    # the Herschel bands will all be treated as upper limits, so we put them in as errors-only
+    tbl.rename_column('70', "Herschel/Pacs.blue_eflux",)
+    tbl.rename_column('160', "Herschel/Pacs.red_eflux")
+    tbl.rename_column('250', "Herschel/SPIRE.PSW_eflux",)
+    tbl.rename_column('350', "Herschel/SPIRE.PMW_eflux",)
+    tbl.rename_column('500', "Herschel/SPIRE.PLW_eflux")
+
+    tbl.rename_column('S24', 'Spitzer/MIPS.24mu_flux')
+    tbl.rename_column('e_S24', 'Spitzer/MIPS.24mu_eflux')
+    
+    # now we set all values for rows where there is no measurement to be the upper limit
+    tbl['e_s24'][tbl['S24'].mask] = tbl['M24_flux_uplim'][tbl['S24'].mask]
 
     tbl.write('SPICY_withAddOns.fits', overwrite=True)

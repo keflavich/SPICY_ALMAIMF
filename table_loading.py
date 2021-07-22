@@ -380,7 +380,7 @@ def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orang
                 fh = fits.open(files[0])[1]
                 ww = wcs.WCS(fh.header)
                 if ww.footprint_contains(crd):
-                    flx = {fn.split("Parallel")[1].split("_")[0]:
+                    flx = {fn.split("Parallel")[1].split("_")[1]:
                            get_flx(crd, fits.getdata(fn, ext=1), wcs.WCS(fits.getheader(fn, ext=1)))
                            for fn in files
                            if wcs.WCS(fits.getheader(fn, ext=1)).footprint_contains(crd)

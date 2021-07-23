@@ -29,6 +29,7 @@ from spectralindex import prefixes
 import spitzer_plots
 from spitzer_plots import show_fov_on_spitzer, contour_levels, get_spitzer_data
 
+from sedfitter import fit, Fitter
 from sedfitter.filter import Filter
 from sedfitter.extinction import Extinction
 from sedfitter.source import Source
@@ -226,25 +227,17 @@ def make_extinction():
 
 sed_filters, wavelength_dict, filternames, zpts = get_filters()
 
-def fit_a_source(data, error, valid,
-    geometry='s-ubhmi', robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
-                 extinction=make_extinction(),
-                 filters=filternames,
-                 aperture_size=3*u.arcsec,
-                 distance_range=[1.8, 2.2]*u.kpc,
-                 av_range=[4,40]
-                ):
+
+def get_fitter(geometry='s-ubhmi', aperture_size=3*u.arcsec,
+               distance_range=[1.8, 2.2]*u.kpc,
+               robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
+               filters=filternames, extinction=make_extinction(),
+               av_range=[4,40]):
 
     # Define path to models
     model_dir = f'{robitaille_modeldir}/{geometry}'
 
-    apertures = u.Quantity([aperture_size]*len(filternames))
-
-    source = Source()
-
-    source.valid = valid
-    source.flux = data
-    source.error =  error
+    apertures = u.Quantity([aperture_size]*len(filters))
 
     fitter = Fitter(filter_names=np.array(filters),
                     apertures=apertures,
@@ -254,6 +247,27 @@ def fit_a_source(data, error, valid,
                     av_range=av_range,
                    )
 
+    return fitter
+
+def fit_a_source(data, error, valid, geometry='s-ubhmi',
+                 robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
+                 extinction=make_extinction(), filters=filternames,
+                 aperture_size=3*u.arcsec, distance_range=[1.8, 2.2]*u.kpc,
+                 av_range=[4,40],
+                 fitter=None,
+                ):
+
+    source = Source()
+
+    source.valid = valid
+    source.flux = data
+    source.error =  error
+
+    if fitter is None:
+        fitter = get_fitter(geometry=geometry, aperture_size=aperture_size,
+                            distance_range=distance_range, av_range=av_range,
+                            robitaille_modeldir=robitaille_modeldir,
+                            filters=filters, extinction=extinction)
 
     # Run the fitting
     fitinfo = fitter.fit(source)
@@ -488,10 +502,18 @@ if __name__ == "__main__":
     tbl.rename_column('350', "Herschel/SPIRE.PMW_eflux",)
     tbl.rename_column('500', "Herschel/SPIRE.PLW_eflux")
 
-    #tbl.rename_column('S24_flux', 'Spitzer/MIPS.24mu_flux')
-    #tbl.rename_column('e_S24_eflux', 'Spitzer/MIPS.24mu_eflux')
+    # now we make all the Herschel band fluxes NaN
+    tbl["Herschel/Pacs.blue_flux"] = np.nan 
+    tbl["Herschel/Pacs.red_flux"]  = np.nan
+    tbl["Herschel/SPIRE.PSW_flux"] = np.nan 
+    tbl["Herschel/SPIRE.PMW_flux"] = np.nan 
+    tbl["Herschel/SPIRE.PLW_flux"] = np.nan 
+
+    tbl.rename_column('S24', 'Spitzer/MIPS.24mu_flux')
+    tbl.rename_column('e_S24', 'Spitzer/MIPS.24mu_eflux')
     
     # now we set all values for rows where there is no measurement to be the upper limit
-    tbl['e_s24'][tbl['S24'].mask] = tbl['M24_flux_uplim'][tbl['S24'].mask]
+    tbl['e_S24'][tbl['S24'].mask] = tbl['M24_flux_uplim'][tbl['S24'].mask]
 
+    os.chdir('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF')
     tbl.write('SPICY_withAddOns.fits', overwrite=True)

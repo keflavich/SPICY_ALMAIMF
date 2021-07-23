@@ -59,12 +59,12 @@ def add_MIPS_matches(tbl):
                                                                          MIPS_IDs[MIPS_IDs_mask])),
                                                catalog='J/AJ/149/64/catalog')[0]
         mips_match.rename_column('MIPSGAL','MIPS')
-        return table.join(tbl, mips_match, join_type='left')
+        tbl = table.join(tbl, mips_match, join_type='left')
     else:
         tbl['MIPS'] = ''
         tbl['S24'] = np.nan
         tbl['e_S24'] = np.nan
-        return tbl
+    return tbl
 
 def add_VVV_matches(tbl):
     virac_numbers = tbl['VIRAC']
@@ -478,7 +478,7 @@ if __name__ == "__main__":
     tbl = add_alma_photometry(tbl, band='b3', wlname='3mm')
     tbl = add_alma_photometry(tbl, band='b6', wlname='1mm')
 
-    tbl = mag_to_flux(tbl)
+    tbl = mag_to_flux(tbl, magcols, emagcols, zpts, filternames)
 
     # rename some columns for convenience later
     # the Herschel bands will all be treated as upper limits, so we put them in as errors-only
@@ -488,8 +488,8 @@ if __name__ == "__main__":
     tbl.rename_column('350', "Herschel/SPIRE.PMW_eflux",)
     tbl.rename_column('500', "Herschel/SPIRE.PLW_eflux")
 
-    tbl.rename_column('S24', 'Spitzer/MIPS.24mu_flux')
-    tbl.rename_column('e_S24', 'Spitzer/MIPS.24mu_eflux')
+    #tbl.rename_column('S24_flux', 'Spitzer/MIPS.24mu_flux')
+    #tbl.rename_column('e_S24_eflux', 'Spitzer/MIPS.24mu_eflux')
     
     # now we set all values for rows where there is no measurement to be the upper limit
     tbl['e_s24'][tbl['S24'].mask] = tbl['M24_flux_uplim'][tbl['S24'].mask]

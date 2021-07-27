@@ -513,7 +513,7 @@ if __name__ == "__main__":
     tbl.rename_column('e_S24', 'Spitzer/MIPS.24mu_eflux')
     
     # now we set all values for rows where there is no measurement to be the upper limit
-    tbl['Spitzer/MIPS.24mu_eflux'][tbl['S24'].mask] = tbl['M24_flux_uplim'][tbl['S24'].mask]
+    tbl['Spitzer/MIPS.24mu_eflux'][tbl['Spitzer/MIPS.24mu_flux'].mask] = tbl['M24_flux_uplim'][tbl['Spitzer/MIPS.24mu_flux'].mask]
 
     os.chdir('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF')
     tbl.write('SPICY_withAddOns.fits', overwrite=True)

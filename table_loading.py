@@ -471,6 +471,13 @@ def add_mips_limits(tbl, coords, mipspath='/orange/adamginsburg/spitzer/mips/'):
 
     return tbl
 
+Herschel_Beams = {'70': np.pi*9.7*10.7*u.arcsec**2 / (8*np.log(2)),
+                  '160': np.pi*13.2*13.9*u.arcsec**2 / (8*np.log(2)),
+                  '250': np.pi*22.8*23.9*u.arcsec**2 / (8*np.log(2)),
+                  '350': np.pi*29.3*31.3*u.arcsec**2 / (8*np.log(2)),
+                  '500': np.pi*41.1*43.8*u.arcsec**2 / (8*np.log(2)),
+                 }
+
 
 if __name__ == "__main__":
 
@@ -496,11 +503,11 @@ if __name__ == "__main__":
 
     # rename some columns for convenience later
     # the Herschel bands will all be treated as upper limits, so we put them in as errors-only
-    tbl.rename_column('70', "Herschel/Pacs.blue_eflux",)
-    tbl.rename_column('160', "Herschel/Pacs.red_eflux")
-    tbl.rename_column('250', "Herschel/SPIRE.PSW_eflux",)
-    tbl.rename_column('350', "Herschel/SPIRE.PMW_eflux",)
-    tbl.rename_column('500', "Herschel/SPIRE.PLW_eflux")
+    tbl["Herschel/Pacs.blue_eflux"] = (tbl['70' ].quantity * u.pixel).to(u.mJy)
+    tbl["Herschel/Pacs.red_eflux"]  = (tbl['160'].quantity * u.pixel).to(u.mJy)
+    tbl["Herschel/SPIRE.PSW_eflux"] = (tbl['250'].quantity * Herschel_Beams['250']).to(u.mJy)
+    tbl["Herschel/SPIRE.PMW_eflux"] = (tbl['350'].quantity * Herschel_Beams['350']).to(u.mJy)
+    tbl["Herschel/SPIRE.PLW_eflux"] = (tbl['500'].quantity * Herschel_Beams['500']).to(u.mJy)
 
     # now we make all the Herschel band fluxes NaN
     tbl["Herschel/Pacs.blue_flux"] = np.nan 
@@ -513,7 +520,7 @@ if __name__ == "__main__":
     tbl.rename_column('e_S24', 'Spitzer/MIPS.24mu_eflux')
     
     # now we set all values for rows where there is no measurement to be the upper limit
-    tbl['Spitzer/MIPS.24mu_eflux'][tbl['Spitzer/MIPS.24mu_flux'].mask] = tbl['M24_flux_uplim'][tbl['Spitzer/MIPS.24mu_flux'].mask]
+    tbl['Spitzer/MIPS.24mu_eflux'][tbl['Spitzer/MIPS.24mu_flux'].mask] = (tbl['M24_flux_uplim'][tbl['Spitzer/MIPS.24mu_flux'].mask].quantity * 2*np.pi*(6*u.arcsec)**2/(8*np.log(2))).to(u.mJy)
 
     os.chdir('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF')
     tbl.write('SPICY_withAddOns.fits', overwrite=True)

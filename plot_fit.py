@@ -101,6 +101,14 @@ def plot_fit(bestfits_source, geometries_selection,
         modelname = fitinfo.model_name[index]
         sed = sedcube.get_sed(modelname)
 
+        apnum = np.argmin(np.abs((default_aperture * distance).to(u.au, u.dimensionless_angles()) - sedcube.apertures))
+
+        print(fitinfo.sc[index])
+        print(sed.flux[apnum].min(), sed.flux[apnum].max())
+        line, = ax0.plot(sedcube.wav,
+                 sed.flux[apnum] * 10**fitinfo.sc[index] * 10**(fitinfo.av[index] * extinction.get_av(sed.wav)),
+                 label=geom, alpha=0.9)
+
         if show_per_aperture:
             apnums = np.array([
                 np.argmin(np.abs((apsize * distance).to(u.au, u.dimensionless_angles()) - sedcube.apertures))
@@ -112,15 +120,7 @@ def plot_fit(bestfits_source, geometries_selection,
             print(flux)
             flux = flux * 10**fitinfo.sc[index] * 10**(fitinfo.av[index] * extinction.get_av(wavelengths)),
             print(flux)
-            ax0.scatter(wavelengths, flux, marker='s', s=apertures.value, c='g')
-
-        apnum = np.argmin(np.abs((default_aperture * distance).to(u.au, u.dimensionless_angles()) - sedcube.apertures))
-
-        print(fitinfo.sc[index])
-        print(sed.flux[apnum].min(), sed.flux[apnum].max())
-        _=ax0.plot(sedcube.wav,
-                 sed.flux[apnum] * 10**fitinfo.sc[index] * 10**(fitinfo.av[index] * extinction.get_av(sed.wav)),
-                 label=geom, alpha=0.9)
+            ax0.scatter(wavelengths, flux, marker='s', s=apertures.value, c=line.get_color())
 
     ax0.loglog()
     ax0.set_xlabel('Wavelength (microns)')

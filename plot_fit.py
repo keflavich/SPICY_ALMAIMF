@@ -103,8 +103,6 @@ def plot_fit(bestfits_source, geometries_selection,
 
         apnum = np.argmin(np.abs((default_aperture * distance).to(u.au, u.dimensionless_angles()) - sedcube.apertures))
 
-        print(fitinfo.sc[index])
-        print(sed.flux[apnum].min(), sed.flux[apnum].max())
         line, = ax0.plot(sedcube.wav,
                  sed.flux[apnum] * 10**fitinfo.sc[index] * 10**(fitinfo.av[index] * extinction.get_av(sed.wav)),
                  label=geom, alpha=0.9)
@@ -116,10 +114,7 @@ def plot_fit(bestfits_source, geometries_selection,
             wlids = np.array([
                 np.argmin(np.abs(ww - sedcube.wav)) for ww in wavelengths])
             flux = np.array([sed.flux[apn, wavid].value for apn, wavid in zip(apnums, wlids)])
-            print(fitinfo.sc[index])
-            print(flux)
             flux = flux * 10**fitinfo.sc[index] * 10**(fitinfo.av[index] * extinction.get_av(wavelengths)),
-            print(flux)
             ax0.scatter(wavelengths, flux, marker='s', s=apertures.value, c=line.get_color())
 
     ax0.loglog()

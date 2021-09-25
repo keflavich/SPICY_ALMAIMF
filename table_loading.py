@@ -244,9 +244,11 @@ def get_fitter(geometry='s-ubhmi', aperture_size=3*u.arcsec,
         apertures = u.Quantity([aperture_size]*len(filters))
     else:
         apertures = u.Quantity(aperture_size, u.arcsec)
-            
+        
+    if isinstance(filters, list):
+        filters = np.array(filters)
 
-    fitter = Fitter(filter_names=np.array(filters),
+    fitter = Fitter(filter_names=filters,
                     apertures=apertures,
                     model_dir=model_dir,
                     extinction_law=extinction,

@@ -240,7 +240,11 @@ def get_fitter(geometry='s-ubhmi', aperture_size=3*u.arcsec,
     # Define path to models
     model_dir = f'{robitaille_modeldir}/{geometry}'
 
-    apertures = u.Quantity([aperture_size]*len(filters))
+    if len(aperture_size) == 1:
+        apertures = u.Quantity([aperture_size]*len(filters))
+    else:
+        apertures = u.Quantity(aperture_size, u.arcsec)
+            
 
     fitter = Fitter(filter_names=np.array(filters),
                     apertures=apertures,

@@ -5,15 +5,29 @@ def datafunction(geom, chi2lim, bestfits):
     data = pars[fitinfo.model_id[selection]]
     return pars, data
   
-def binsfunction(param, kind, binsnum, chi2lim, geometries, bestfits):
+def binsfunction(param, kind, binsnum, chi2lim, geometries, bestfits, massnum=9):
+    # note: the massnum indicates an index for aperture size, and is used in the
+    # parameters which involve multiple aperture sizes to select just one. you'll
+    # need to find out what your massnum= is if you use this.
+    
     datamin = []
     datamax = []
     for geom in geometries:
         pars, data = datafunction(geom, chi2lim, bestfits)
         if param in pars.keys():
-            datamin.append(data[param].min())
-            datamax.append(data[param].max())
+            if param == "Line-of-Sight Masses":
+                dataparam = data[param]
+                datamin.append(dataparam[massnum].min())
+                datamax.append(dataparam[massnum].max())
+            elif param == "Sphere Masses":
+                dataparam = data[param]
+                datamin.append(dataparam[massnum].min())
+                datamax.append(dataparam[massnum].max())
+            else:
+                datamin.append(data[param].min())
+                datamax.append(data[param].max())
 
+    # just some idiot-proofing because i ran into a problem with this
     for x in datamin:
         if x == 0:
             datamin.remove(x)
@@ -42,7 +56,7 @@ def binsfunction(param, kind, binsnum, chi2lim, geometries, bestfits):
 
 # Setting up the plot surface
 basefig = plt.figure(figsize=(20, 22))
-gs = GridSpec(nrows=5, ncols=2, height_ratios=[4,1,1,1,1])
+gs = GridSpec(nrows=5, ncols=2, height_ratios=[4,1,1,1,1], hspace=0.25, wspace=0.1)
 
 # --------------------------------
 
@@ -101,9 +115,12 @@ linnum = 50
 tempbins = binsfunction('star.temperature', 'lin', linnum, chi2limit, geometries_selection, bestfits_source)
 lumbins = binsfunction('Model Luminosity', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
 radbins = binsfunction('star.radius', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
-losbins = binsfunction('Line-of-Sight Masses', 'log', 10, chi2limit, geometries_selection, bestfits_source)
+losbins = binsfunction('Line-of-Sight Masses', 'log', 20, chi2limit, geometries_selection, bestfits_source, 0)
 dscbins = binsfunction('disk.mass', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
-sphbins = binsfunction('Sphere Masses', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
+sphbins = binsfunction('Sphere Masses', 'log', 20, chi2limit, geometries_selection, bestfits_source, 0)
+
+# index values used above and below for mass-related parameters should, i think, be the same as your
+# massnum index, which again has to do with aperture sizes
 
 for geom in geometries_selection:
     pars, data = datafunction(geom, chi2limit, bestfits_source)
@@ -118,7 +135,7 @@ for geom in geometries_selection:
         ax3.hist(data['star.radius'], bins=radbins, alpha=histalpha, label=geom)
 
     if 'Line-of-Sight Masses' in pars.keys():
-        ax4.hist(data['Line-of-Sight Masses'], bins=losbins, alpha=histalpha, label=geom)
+        ax4.hist(data['Line-of-Sight Masses'][0], bins=losbins, alpha=histalpha, label=geom)
         
     if 'disk.mass' in pars.keys():
         ax5.hist(data['disk.mass'], bins=dscbins, alpha=histalpha, label=geom)
@@ -127,7 +144,7 @@ for geom in geometries_selection:
         ax6.hist(data['Sphere Masses'][0], bins=sphbins, alpha=histalpha, label=geom)
 
 handles, labels = ax1.get_legend_handles_labels()
-ax0.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.22,1.02))
+ax0.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.16,1.02))
 ax1.set_xlabel("Stellar Temperature (K)")
 ax2.set_xlabel("Stellar Luminosity (L$_\odot$)")
 ax3.set_xlabel("Stellar Radius (R$_\odot$)")
@@ -151,6 +168,8 @@ locfig = np.flipud(locfig)
 
 ax9 = basefig.add_subplot(gs[0, 0])
 ax9.imshow(locfig)
+ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid}\n', fontsize=25)
+ttl.set_position([.5, 1])
 #ax9.axis([90,630,90,630])
 ax9.axis([170,550,170,550])
 ax9.axis('off')

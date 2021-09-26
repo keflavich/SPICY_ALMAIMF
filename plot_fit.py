@@ -164,7 +164,7 @@ def plot_fit(bestfits_source, geometries_selection,
     except ValueError:
         # this is OK; some models don't have disks
         pass
-    sphbins = binsfunction('Sphere Masses', 'log', 20, chi2limit, geometries_selection, bestfits_source, 0)
+    sphbins = binsfunction('Sphere Masses', 'log', 50, chi2limit, geometries_selection, bestfits_source, 0)
 
     # index values used above and below for mass-related parameters should, i think, be the same as your
     # massnum index, which again has to do with aperture sizes

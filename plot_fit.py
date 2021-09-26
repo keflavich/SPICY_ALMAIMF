@@ -67,7 +67,6 @@ def binsfunction(param, kind, binsnum, chi2lim, geometries, bestfits, massnum=9)
 
 def plot_fit(bestfits_source, geometries_selection,
         chi2limit,
-        distance=2*u.kpc,
         extinction=table_loading.make_extinction(),
         show_per_aperture=True,
         default_aperture=3*u.arcsec,
@@ -75,7 +74,7 @@ def plot_fit(bestfits_source, geometries_selection,
 
     # Setting up the plot surface
     basefig = plt.figure(figsize=(20, 22))
-    gs = GridSpec(nrows=5, ncols=2, height_ratios=[4,1,1,1,1], hspace=0.25, wspace=0.1)
+    gs = GridSpec(nrows=6, ncols=2, height_ratios=[4,1,1,1,1,1], hspace=0.25, wspace=0.1)
 
     # --------------------------------
 
@@ -90,6 +89,8 @@ def plot_fit(bestfits_source, geometries_selection,
     ax0.errorbar(wavelengths.value[valid==1], source.flux[valid==1]/1e3, yerr=source.error[valid==1]/1e3, linestyle='none', color='w', marker='o', markersize=10)
     ax0.plot(wavelengths.value[valid==3], source.flux[valid==3], linestyle='none', color='w', marker='v', markersize=10)
 
+    distance = (10**fitinfo.sc * u.kpc).mean()
+    
     for geom in geometries_selection:
 
         fitinfo = bestfits_source[geom]
@@ -98,6 +99,9 @@ def plot_fit(bestfits_source, geometries_selection,
         sedcube = SEDCube.read(f"{model_dir}/flux.fits",)
 
         index = np.nanargmin(fitinfo.chi2)
+        
+        distance = (10**fitinfo.sc[index] * u.kpc)
+
         modelname = fitinfo.model_name[index]
         sed = sedcube.get_sed(modelname)
 
@@ -140,14 +144,20 @@ def plot_fit(bestfits_source, geometries_selection,
     ax4 = basefig.add_subplot(gs[2, 1])
     ax5 = basefig.add_subplot(gs[3, 0])
     ax6 = basefig.add_subplot(gs[3, 1])
+    ax7 = basefig.add_subplot(gs[4, 0])
+    ax8 = basefig.add_subplot(gs[4, 1])
 
+    
     histalpha = 0.8
     lognum = 50
     linnum = 50
 
     tempbins = binsfunction('star.temperature', 'lin', linnum, chi2limit, geometries_selection, bestfits_source)
+    tempbins = np.linspace(2000, 30000, 50)
     lumbins = binsfunction('Model Luminosity', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
+    lumbins = np.logspace(-4,7,100)
     radbins = binsfunction('star.radius', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
+    radbins = np.geomspace(0.1, 100, 50)
     losbins = binsfunction('Line-of-Sight Masses', 'log', 20, chi2limit, geometries_selection, bestfits_source, 0)
     try:
         dscbins = binsfunction('disk.mass', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
@@ -172,14 +182,20 @@ def plot_fit(bestfits_source, geometries_selection,
             ax3.hist(data['star.radius'], bins=radbins, alpha=histalpha, label=geom)
 
         if 'Line-of-Sight Masses' in pars.keys():
-            ax4.hist(data['Line-of-Sight Masses'][0], bins=losbins, alpha=histalpha, label=geom)
+            ax4.hist(data['Line-of-Sight Masses'][:,apnum], bins=losbins, alpha=histalpha, label=geom)
 
         if 'disk.mass' in pars.keys():
             ax5.hist(data['disk.mass'], bins=dscbins, alpha=histalpha, label=geom)
 
         if 'Sphere Masses' in pars.keys():
-            ax6.hist(data['Sphere Masses'][0], bins=sphbins, alpha=histalpha, label=geom)
+            ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom)
 
+    distances = 10**fitinfo.sc
+    ax7.hist(distances, bins=np.linspace(distances.min(), distances.max()))
+    
+    ax8.hist(fitinfo.av, bins=np.linspace(np.nanmin(fitinfo.av), np.nanmax(fitinfo.av)))
+    
+            
     handles, labels = ax1.get_legend_handles_labels()
     ax0.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.16,1.02))
     ax1.set_xlabel("Stellar Temperature (K)")
@@ -188,6 +204,8 @@ def plot_fit(bestfits_source, geometries_selection,
     ax4.set_xlabel("Line-of-Sight Masses (M$_\odot$)")
     ax5.set_xlabel("Disk Mass (M$_\odot$)")
     ax6.set_xlabel("Sphere Mass (M$_\odot$)")
+    ax7.set_xlabel("Distance (kpc)")
+    ax8.set_xlabel("Extinction [$A_V$]")
 
     _=ax2.semilogx()
     _=ax3.semilogx()

@@ -86,7 +86,7 @@ def plot_fit(bestfits_source, geometries_selection,
     valid = source.valid
     wavelengths = u.Quantity([x['wav'] for x in fitinfo.meta.filters], u.um)
     apertures = u.Quantity([x['aperture_arcsec'] for x in fitinfo.meta.filters], u.arcsec)
-    ax0.errorbar(wavelengths.value[valid==1], source.flux[valid==1]/1e3, yerr=source.error[valid==1]/1e3, linestyle='none', color='w', marker='o', markersize=10)
+    ax0.errorbar(wavelengths.value[valid==1], source.flux[valid==1], yerr=source.error[valid==1], linestyle='none', color='w', marker='o', markersize=10)
     ax0.plot(wavelengths.value[valid==3], source.flux[valid==3], linestyle='none', color='w', marker='v', markersize=10)
 
     distance = (10**fitinfo.sc * u.kpc).mean()
@@ -107,8 +107,14 @@ def plot_fit(bestfits_source, geometries_selection,
 
         apnum = np.argmin(np.abs((default_aperture * distance).to(u.au, u.dimensionless_angles()) - sedcube.apertures))
 
+        # https://github.com/astrofrog/sedfitter/blob/41dee15bdd069132b7c2fc0f71c4e2741194c83e/sedfitter/sed/sed.py#L64
+        distance_scale = (1*u.kpc/distance)**2
+        
+        # https://github.com/astrofrog/sedfitter/blob/41dee15bdd069132b7c2fc0f71c4e2741194c83e/sedfitter/sed/sed.py#L84
+        av_scale = 10**((fitinfo.av[index] * extinction.get_av(sed.wav)))
+
         line, = ax0.plot(sedcube.wav,
-                 sed.flux[apnum] * 10**fitinfo.sc[index] * 10**(fitinfo.av[index] * extinction.get_av(sed.wav)),
+                 sed.flux[apnum] * distance_scale * av_scale,
                  label=geom, alpha=0.9)
 
         if show_per_aperture:
@@ -118,7 +124,9 @@ def plot_fit(bestfits_source, geometries_selection,
             wlids = np.array([
                 np.argmin(np.abs(ww - sedcube.wav)) for ww in wavelengths])
             flux = np.array([sed.flux[apn, wavid].value for apn, wavid in zip(apnums, wlids)])
-            flux = flux * 10**fitinfo.sc[index] * 10**(fitinfo.av[index] * extinction.get_av(wavelengths)),
+            
+            av_scale_conv = 10**((fitinfo.av[index] * extinction.get_av(wavelengths)))
+            flux = flux * distance_scale * av_scale_conv
             ax0.scatter(wavelengths, flux, marker='s', s=apertures.value, c=line.get_color())
 
     ax0.loglog()

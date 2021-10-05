@@ -269,8 +269,12 @@ def fit_a_source(data, error, valid, geometry='s-ubhmi',
     source = Source()
 
     source.valid = valid
-    source.flux = data
-    source.error =  error
+    # if the data are given as a Jy-equivalent, convert them to mJy
+    # for cases where error is a percent, this should be a null action (so it should be OK...)
+    source.flux = u.Quantity(data, u.mJy).value
+    source.error =  u.Quantity(error, u.mJy).value
+    # https://sedfitter.readthedocs.io/en/stable/data.html
+    # this site specifies that the fitter expects flux in mJy
 
     if fitter is None:
         fitter = get_fitter(geometry=geometry, aperture_size=aperture_size,
@@ -299,7 +303,7 @@ def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
             tbl[zpn+"_flux"] = flx = np.ma.masked_where(tbl[colname].mask, (zp * 10**(data/-2.5)).to(u.mJy))
         else:
             tbl[zpn+"_flux"] = flx = (zp * 10**(data/-2.5)).to(u.mJy)
-        err = tbl[errcolname] / 1.09 * flx
+        err = tbl[errcolname] / (1.09*u.mag) * flx
         tbl[zpn+"_eflux"] = err
 
     return tbl

@@ -48,6 +48,9 @@ def binsfunction(param, kind, binsnum, chi2lim, geometries, bestfits, massnum=9)
         if x == 0:
             datamax.remove(x)
 
+    if len(datamin) == 0:
+        return
+            
     if kind == 'log':
         binsmin = np.log10(min(datamin))
         binsmax = np.log10(max(datamax))
@@ -70,7 +73,10 @@ def plot_fit(bestfits_source, geometries_selection,
         extinction=table_loading.make_extinction(),
         show_per_aperture=True,
         default_aperture=3*u.arcsec,
-        robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',):
+        robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
+        show_all_models=False,
+             alpha_allmodels=0.1,
+            ):
 
     # Setting up the plot surface
     basefig = plt.figure(figsize=(20, 22))
@@ -98,6 +104,8 @@ def plot_fit(bestfits_source, geometries_selection,
         model_dir = f'{robitaille_modeldir}/{geom}'
         sedcube = SEDCube.read(f"{model_dir}/flux.fits",)
 
+           
+        
         index = np.nanargmin(fitinfo.chi2)
         
         distance = (10**fitinfo.sc[index] * u.kpc)
@@ -112,10 +120,24 @@ def plot_fit(bestfits_source, geometries_selection,
         
         # https://github.com/astrofrog/sedfitter/blob/41dee15bdd069132b7c2fc0f71c4e2741194c83e/sedfitter/sed/sed.py#L84
         av_scale = 10**((fitinfo.av[index] * extinction.get_av(sed.wav)))
-
+        
         line, = ax0.plot(sedcube.wav,
                  sed.flux[apnum] * distance_scale * av_scale,
                  label=geom, alpha=0.9)
+
+        
+        indices = fitinfo.chi2 < chi2limit
+        
+        if show_all_models and any(indices):
+            dist_scs = ((1*u.kpc)/(10**fitinfo.sc[indices] * u.kpc))**2
+            mods = np.array([sedcube.get_sed(modelname).flux[apnum] for modelname in fitinfo.model_name[indices]])
+            av_scales = 10**((fitinfo.av[indices][:,None] * extinction.get_av(sed.wav)[None,:]))
+            
+            lines = ax0.plot(sedcube.wav,
+                             (mods * dist_scs[:,None] * av_scales).T,
+                             alpha=alpha_allmodels,
+                             c=line.get_color())
+         
 
         if show_per_aperture:
             apnums = np.array([
@@ -166,7 +188,10 @@ def plot_fit(bestfits_source, geometries_selection,
     lumbins = np.logspace(-4,7,100)
     radbins = binsfunction('star.radius', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
     radbins = np.geomspace(0.1, 100, 50)
-    losbins = binsfunction('Line-of-Sight Masses', 'log', 20, chi2limit, geometries_selection, bestfits_source, 0)
+    try:
+        losbins = binsfunction('Line-of-Sight Masses', 'log', 20, chi2limit, geometries_selection, bestfits_source, 0)
+    except ValueError:
+        losbins = np.geomspace(1e-4,10)
     try:
         dscbins = binsfunction('disk.mass', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
     except ValueError:

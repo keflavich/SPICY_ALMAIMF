@@ -222,11 +222,15 @@ def plot_fit(bestfits_source, geometries_selection,
 
         if 'Sphere Masses' in pars.keys():
             ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom)
+   
+    for geom in geometries_selection:
 
-    distances = 10**fitinfo.sc
-    ax7.hist(distances, bins=np.linspace(distances.min(), distances.max()))
-    
-    ax8.hist(fitinfo.av, bins=np.linspace(np.nanmin(fitinfo.av), np.nanmax(fitinfo.av)))
+        fitinfo = bestfits_source[geom]
+        
+        distances = 10**fitinfo.sc
+        ax7.hist(distances, bins=np.linspace(distances.min(), distances.max()))
+
+        ax8.hist(fitinfo.av, bins=np.linspace(np.nanmin(fitinfo.av), np.nanmax(fitinfo.av)))
     
             
     handles, labels = ax1.get_legend_handles_labels()

@@ -10,14 +10,14 @@ from astropy.table import Table
 
 import table_loading
 
-def datafunction(geom, chi2lim, bestfits):
+def datafunction(geom, deltachi2lim, bestfits):
     pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
     fitinfo = bestfits[geom]
-    selection = fitinfo.chi2 < np.nanmin(fitinfo.chi2) + chi2lim
+    selection = fitinfo.chi2 < (np.nanmin(fitinfo.chi2) + deltachi2lim)
     data = pars[fitinfo.model_id[selection]]
     return pars, data
 
-def binsfunction(param, kind, binsnum, chi2lim, geometries, bestfits, massnum=9):
+def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massnum=9):
     # note: the massnum indicates an index for aperture size, and is used in the
     # parameters which involve multiple aperture sizes to select just one. you'll
     # need to find out what your massnum= is if you use this.
@@ -25,7 +25,7 @@ def binsfunction(param, kind, binsnum, chi2lim, geometries, bestfits, massnum=9)
     datamin = []
     datamax = []
     for geom in geometries:
-        pars, data = datafunction(geom, chi2lim, bestfits)
+        pars, data = datafunction(geom, deltachi2lim, bestfits)
         if param in pars.keys():
             if param == "Line-of-Sight Masses":
                 dataparam = data[param]
@@ -69,7 +69,7 @@ def binsfunction(param, kind, binsnum, chi2lim, geometries, bestfits, massnum=9)
     return bins
 
 def plot_fit(bestfits_source, geometries_selection,
-        chi2limit,
+        deltachi2limit,
         extinction=table_loading.make_extinction(),
         show_per_aperture=True,
         default_aperture=3*u.arcsec,
@@ -126,7 +126,7 @@ def plot_fit(bestfits_source, geometries_selection,
                  label=geom, alpha=0.9)
 
         
-        indices = fitinfo.chi2 < chi2limit
+        indices = fitinfo.chi2 < (deltachi2limit + np.nanmin(fitinfo.chi2))
         
         if show_all_models and any(indices):
             dist_scs = ((1*u.kpc)/(10**fitinfo.sc[indices] * u.kpc))**2
@@ -182,28 +182,28 @@ def plot_fit(bestfits_source, geometries_selection,
     lognum = 50
     linnum = 50
 
-    tempbins = binsfunction('star.temperature', 'lin', linnum, chi2limit, geometries_selection, bestfits_source)
+    #tempbins = binsfunction('star.temperature', 'lin', linnum, chi2limit, geometries_selection, bestfits_source)
     tempbins = np.linspace(2000, 30000, 50)
-    lumbins = binsfunction('Model Luminosity', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
+    #lumbins = binsfunction('Model Luminosity', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
     lumbins = np.logspace(-4,7,100)
-    radbins = binsfunction('star.radius', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
+    #radbins = binsfunction('star.radius', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
     radbins = np.geomspace(0.1, 100, 50)
     try:
-        losbins = binsfunction('Line-of-Sight Masses', 'log', 20, chi2limit, geometries_selection, bestfits_source, 0)
+        losbins = binsfunction('Line-of-Sight Masses', 'log', 20, deltachi2limit, geometries_selection, bestfits_source, 0)
     except ValueError:
         losbins = np.geomspace(1e-4,10)
     try:
-        dscbins = binsfunction('disk.mass', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
+        dscbins = binsfunction('disk.mass', 'log', lognum, deltachi2limit, geometries_selection, bestfits_source)
     except ValueError:
         # this is OK; some models don't have disks
         pass
-    sphbins = binsfunction('Sphere Masses', 'log', 50, chi2limit, geometries_selection, bestfits_source, 0)
+    sphbins = binsfunction('Sphere Masses', 'log', 50, deltachi2limit, geometries_selection, bestfits_source, 0)
 
     # index values used above and below for mass-related parameters should, i think, be the same as your
     # massnum index, which again has to do with aperture sizes
 
     for geom in geometries_selection:
-        pars, data = datafunction(geom, chi2limit, bestfits_source)
+        pars, data = datafunction(geom, deltachi2limit, bestfits_source)
 
         if 'star.temperature' in pars.keys():
             ax1.hist(data['star.temperature'], bins=tempbins, alpha=histalpha, label=geom)

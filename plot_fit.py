@@ -78,12 +78,12 @@ def plot_fit(bestfits_source, geometries_selection,
              alpha_allmodels=0.1,
             ):
 
-    # This code will break if you don't have the following variables defined and passed into the function:
-    # fieldid = 'G328' (ex. - whatever your region is)
-    # spicyid = 31415 (ex. - whatever source you're looking at)
-    # name = 'btingle' (however your name appears in your directory, aka /home/yourname)
-    # They are used to pull the location image.
-    
+    """
+    Parameters
+    ----------
+    fieldid : string
+         'G328' (ex. - whatever your region is)
+    """
     # Setting up the plot surface
     basefig = plt.figure(figsize=(20, 22))
     gs = GridSpec(nrows=6, ncols=2, height_ratios=[4,1,1,1,1,1], hspace=0.25, wspace=0.1)

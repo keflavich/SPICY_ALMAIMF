@@ -77,12 +77,16 @@ def plot_fit(bestfits_source, geometries_selection,
         show_all_models=False,
              alpha_allmodels=0.1,
             ):
-
+    
     """
     Parameters
     ----------
     fieldid : string
          'G328' (ex. - whatever your region is)
+    spicyid : number
+         31415 (ex. - whatever source you're looking at)
+    name : string
+         'btingle' (ex. - however your name appears in your directory, aka /home/yourname)
     """
     # Setting up the plot surface
     basefig = plt.figure(figsize=(20, 22))

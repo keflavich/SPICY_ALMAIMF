@@ -69,7 +69,7 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
     return bins
 
 def plot_fit(bestfits_source, geometries_selection,
-        deltachi2limit,
+        deltachi2limit, fieldid, spicyid, name,
         extinction=table_loading.make_extinction(),
         show_per_aperture=True,
         default_aperture=3*u.arcsec,
@@ -78,6 +78,12 @@ def plot_fit(bestfits_source, geometries_selection,
              alpha_allmodels=0.1,
             ):
 
+    # This code will break if you don't have the following variables defined and passed into the function:
+    # fieldid = 'G328' (ex. - whatever your region is)
+    # spicyid = 31415 (ex. - whatever source you're looking at)
+    # name = 'btingle' (however your name appears in your directory, aka /home/yourname)
+    # They are used to pull the location image.
+    
     # Setting up the plot surface
     basefig = plt.figure(figsize=(20, 22))
     gs = GridSpec(nrows=6, ncols=2, height_ratios=[4,1,1,1,1,1], hspace=0.25, wspace=0.1)
@@ -253,15 +259,13 @@ def plot_fit(bestfits_source, geometries_selection,
     # --------------------------------
 
     # reading the saved image of the region with source location marked
-    # locfig = mpimg.imread(f'/home/btingle/figures/{fieldid}_{spicyid}.png')
+    locfig = mpimg.imread(f'/home/{name}/figures/{fieldid}_{spicyid}.png')
+    locfig = np.flipud(locfig)
 
-    # my image needs to be flipped
-    # locfig = np.flipud(locfig)
-
-    # ax9 = basefig.add_subplot(gs[0, 0])
-    # ax9.imshow(locfig)
-    # ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid}\n', fontsize=25)
-    # ttl.set_position([.5, 1])
-    # #ax9.axis([90,630,90,630])
-    # ax9.axis([170,550,170,550])
-    # ax9.axis('off')
+    ax9 = basefig.add_subplot(gs[0, 0])
+    ax9.imshow(locfig)
+    ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid}\n', fontsize=25)
+    ttl.set_position([.5, 1])
+    #ax9.axis([90,630,90,630])
+    ax9.axis([170,550,170,550])
+    ax9.axis('off')

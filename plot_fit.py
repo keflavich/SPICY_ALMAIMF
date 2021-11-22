@@ -69,7 +69,8 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
     return bins
 
 def plot_fit(bestfits_source, geometries_selection,
-        deltachi2limit, fieldid, spicyid, name,
+        deltachi2limit, fieldid, spicyid,
+        figurepath=os.path.expanduser('~/figures'),
         extinction=table_loading.make_extinction(),
         show_per_aperture=True,
         default_aperture=3*u.arcsec,

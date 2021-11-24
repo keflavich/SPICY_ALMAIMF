@@ -68,15 +68,12 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
 
     return bins
 
-def plot_fit(bestfits_source, geometries_selection,
-        deltachi2limit, fieldid, spicyid,
-        figurepath=os.path.expanduser('~/figures'),
-        extinction=table_loading.make_extinction(),
-        show_per_aperture=True,
-        default_aperture=3*u.arcsec,
-        robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
-        show_all_models=False,
-             alpha_allmodels=0.1,
+def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid,
+             spicyid, figurepath=os.path.expanduser('~/figures'),
+             extinction=table_loading.make_extinction(),
+             show_per_aperture=True, default_aperture=3*u.arcsec,
+             robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
+             show_all_models=False, alpha_allmodels=0.1, verbose=True
             ):
 
     """
@@ -274,4 +271,6 @@ def plot_fit(bestfits_source, geometries_selection,
         #ax9.axis([90,630,90,630])
         ax9.axis([170,550,170,550])
         ax9.axis('off')
+    elif verbose:
+        print(f"Figure {figpath} doesn't exist")
 

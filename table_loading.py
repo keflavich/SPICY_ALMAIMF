@@ -38,6 +38,7 @@ from sedfitter.extinction import Extinction
 from sedfitter.source import Source
 
 from dust_extinction.parameter_averages import F19
+from dust_extinction.averages import CT06_MWLoc
 
 geometries = ["s---s-i", "s---smi", "sp--s-i", "sp--h-i", "s---smi", "s-p-smi",
               "s-p-hmi", "s-pbsmi", "s-pbhmi", "s-u-smi", "s-u-hmi", "s-ubsmi",
@@ -215,15 +216,22 @@ def get_filters():
 def make_extinction():
     # make an extinction law
     ext = F19(3.1)
+    ext2 = CT06_MWLoc()
+
 
     # https://arxiv.org/abs/0903.2057
     # 1.34 is from memory
     guyver2009_avtocol = (2.21e21 * u.cm**-2 * (1.34*u.Da)).to(u.g/u.cm**2)
     ext_wav = np.sort((np.geomspace(0.301, 8.699, 1000)/u.um).to(u.um, u.spectral()))
     ext_vals = ext.evaluate(ext_wav, Rv=3.1)
+    
+    # extend the extinction curve out
+    ext_wav2 = np.geomspace(ext_wav.max(), 27*u.um, 100)
+    ext_vals2 = ext2.evaluate(ext_wav2)
+        
     extinction = Extinction()
-    extinction.wav = ext_wav
-    extinction.chi = ext_vals / guyver2009_avtocol
+    extinction.wav = np.hstack([ext_wav, ext_wav2])
+    extinction.chi = np.hstack([ext_vals, ext_vals2]) / guyver2009_avtocol
 
     return extinction
 

@@ -50,7 +50,7 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
 
     if len(datamin) == 0:
         return
-            
+
     if kind == 'log':
         binsmin = np.log10(min(datamin))
         binsmax = np.log10(max(datamax))
@@ -78,7 +78,7 @@ def plot_fit(bestfits_source, geometries_selection,
         show_all_models=False,
              alpha_allmodels=0.1,
             ):
-    
+
     """
     Parameters
     ----------
@@ -107,7 +107,7 @@ def plot_fit(bestfits_source, geometries_selection,
     ax0.plot(wavelengths.value[valid==3], source.flux[valid==3], linestyle='none', color='w', marker='v', markersize=10)
 
     distance = (10**fitinfo.sc * u.kpc).mean()
-    
+
     for geom in geometries_selection:
 
         fitinfo = bestfits_source[geom]
@@ -115,10 +115,10 @@ def plot_fit(bestfits_source, geometries_selection,
         model_dir = f'{robitaille_modeldir}/{geom}'
         sedcube = SEDCube.read(f"{model_dir}/flux.fits",)
 
-           
-        
+
+
         index = np.nanargmin(fitinfo.chi2)
-        
+
         distance = (10**fitinfo.sc[index] * u.kpc)
 
         modelname = fitinfo.model_name[index]
@@ -128,27 +128,27 @@ def plot_fit(bestfits_source, geometries_selection,
 
         # https://github.com/astrofrog/sedfitter/blob/41dee15bdd069132b7c2fc0f71c4e2741194c83e/sedfitter/sed/sed.py#L64
         distance_scale = (1*u.kpc/distance)**2
-        
+
         # https://github.com/astrofrog/sedfitter/blob/41dee15bdd069132b7c2fc0f71c4e2741194c83e/sedfitter/sed/sed.py#L84
         av_scale = 10**((fitinfo.av[index] * extinction.get_av(sed.wav)))
-        
+
         line, = ax0.plot(sedcube.wav,
                  sed.flux[apnum] * distance_scale * av_scale,
                  label=geom, alpha=0.9)
 
-        
+
         indices = fitinfo.chi2 < (deltachi2limit + np.nanmin(fitinfo.chi2))
-        
+
         if show_all_models and any(indices):
             dist_scs = ((1*u.kpc)/(10**fitinfo.sc[indices] * u.kpc))**2
             mods = np.array([sedcube.get_sed(modelname).flux[apnum] for modelname in fitinfo.model_name[indices]])
             av_scales = 10**((fitinfo.av[indices][:,None] * extinction.get_av(sed.wav)[None,:]))
-            
+
             lines = ax0.plot(sedcube.wav,
                              (mods * dist_scs[:,None] * av_scales).T,
                              alpha=alpha_allmodels,
                              c=line.get_color())
-         
+
 
         if show_per_aperture:
             apnums = np.array([
@@ -157,7 +157,7 @@ def plot_fit(bestfits_source, geometries_selection,
             wlids = np.array([
                 np.argmin(np.abs(ww - sedcube.wav)) for ww in wavelengths])
             flux = np.array([sed.flux[apn, wavid].value for apn, wavid in zip(apnums, wlids)])
-            
+
             av_scale_conv = 10**((fitinfo.av[index] * extinction.get_av(wavelengths)))
             flux = flux * distance_scale * av_scale_conv
             ax0.scatter(wavelengths, flux, marker='s', s=apertures.value, c=line.get_color())
@@ -188,7 +188,7 @@ def plot_fit(bestfits_source, geometries_selection,
     ax7 = basefig.add_subplot(gs[4, 0])
     ax8 = basefig.add_subplot(gs[4, 1])
 
-    
+
     histalpha = 0.8
     lognum = 50
     linnum = 50
@@ -233,17 +233,17 @@ def plot_fit(bestfits_source, geometries_selection,
 
         if 'Sphere Masses' in pars.keys():
             ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom)
-   
+
     for geom in geometries_selection:
 
         fitinfo = bestfits_source[geom]
-        
+
         distances = 10**fitinfo.sc
         ax7.hist(distances, bins=np.linspace(distances.min(), distances.max()))
 
         ax8.hist(fitinfo.av, bins=np.linspace(np.nanmin(fitinfo.av), np.nanmax(fitinfo.av)))
-    
-            
+
+
     handles, labels = ax1.get_legend_handles_labels()
     ax0.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.16,1.02))
     ax1.set_xlabel("Stellar Temperature (K)")
@@ -261,16 +261,17 @@ def plot_fit(bestfits_source, geometries_selection,
     _=ax5.semilogx()
     _=ax6.semilogx()
 
-    # --------------------------------
-
     # reading the saved image of the region with source location marked
-    locfig = mpimg.imread(f'{figurepath}/{fieldid}_{spicyid}.png')
-    locfig = np.flipud(locfig)
+    figpath = f'{figurepath}/{fieldid}_{spicyid}.png'
+    if os.path.exists(figpath):
+        locfig = mpimg.imread(figpath)
+        locfig = np.flipud(locfig)
 
-    ax9 = basefig.add_subplot(gs[0, 0])
-    ax9.imshow(locfig)
-    ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid}\n', fontsize=25)
-    ttl.set_position([.5, 1])
-    #ax9.axis([90,630,90,630])
-    ax9.axis([170,550,170,550])
-    ax9.axis('off')
+        ax9 = basefig.add_subplot(gs[0, 0])
+        ax9.imshow(locfig)
+        ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid}\n', fontsize=25)
+        ttl.set_position([.5, 1])
+        #ax9.axis([90,630,90,630])
+        ax9.axis([170,550,170,550])
+        ax9.axis('off')
+

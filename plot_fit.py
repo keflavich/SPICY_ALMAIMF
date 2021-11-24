@@ -264,7 +264,7 @@ def plot_fit(bestfits_source, geometries_selection,
     # --------------------------------
 
     # reading the saved image of the region with source location marked
-    locfig = mpimg.imread(f'/home/{name}/figures/{fieldid}_{spicyid}.png')
+    locfig = mpimg.imread(f'{figurepath}/{fieldid}_{spicyid}.png')
     locfig = np.flipud(locfig)
 
     ax9 = basefig.add_subplot(gs[0, 0])

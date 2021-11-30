@@ -10,6 +10,12 @@ from astropy.table import Table
 
 import table_loading
 
+from astropy.modeling.models import BlackBody
+
+#gas mass upper limits
+
+mass_ul = (((sed_tbl['ALMA-IMF_1mm_flux'])*u.mJy * (2.2*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
+
 def datafunction(geom, deltachi2lim, bestfits):
     pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
     fitinfo = bestfits[geom]
@@ -224,12 +230,15 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid,
 
         if 'Line-of-Sight Masses' in pars.keys():
             ax4.hist(data['Line-of-Sight Masses'][:,apnum], bins=losbins, alpha=histalpha, label=geom)
+            ax4.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
 
         if 'disk.mass' in pars.keys():
             ax5.hist(data['disk.mass'], bins=dscbins, alpha=histalpha, label=geom)
+            ax5.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
 
         if 'Sphere Masses' in pars.keys():
             ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom)
+            ax6.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
 
     for geom in geometries_selection:
 
@@ -266,7 +275,7 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid,
 
         ax9 = basefig.add_subplot(gs[0, 0])
         ax9.imshow(locfig)
-        ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid}\n', fontsize=25)
+        ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid} | mass_ul\n', fontsize=25)
         ttl.set_position([.5, 1])
         #ax9.axis([90,630,90,630])
         ax9.axis([170,550,170,550])

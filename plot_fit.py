@@ -15,7 +15,7 @@ def datafunction(geom, deltachi2lim, bestfits):
     fitinfo = bestfits[geom]
     selection = fitinfo.chi2 < (np.nanmin(fitinfo.chi2) + deltachi2lim)
     data = pars[fitinfo.model_id[selection]]
-    return pars, data
+    return pars, data, selection
 
 def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massnum=9):
     # note: the massnum indicates an index for aperture size, and is used in the
@@ -25,7 +25,7 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
     datamin = []
     datamax = []
     for geom in geometries:
-        pars, data = datafunction(geom, deltachi2lim, bestfits)
+        pars, data, selection = datafunction(geom, deltachi2lim, bestfits)
         if param in pars.keys():
             if param == "Line-of-Sight Masses":
                 dataparam = data[param]
@@ -211,7 +211,7 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid,
     # massnum index, which again has to do with aperture sizes
 
     for geom in geometries_selection:
-        pars, data = datafunction(geom, deltachi2limit, bestfits_source)
+        pars, data, selection = datafunction(geom, deltachi2limit, bestfits_source)
 
         if 'star.temperature' in pars.keys():
             ax1.hist(data['star.temperature'], bins=tempbins, alpha=histalpha, label=geom)
@@ -231,14 +231,12 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid,
         if 'Sphere Masses' in pars.keys():
             ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom)
 
-    for geom in geometries_selection:
-
         fitinfo = bestfits_source[geom]
 
         distances = 10**fitinfo.sc
-        ax7.hist(distances, bins=np.linspace(distances.min(), distances.max()))
+        ax7.hist(distances[selection], bins=np.linspace(distances[selection].min(), distances[selection].max()))
 
-        ax8.hist(fitinfo.av, bins=np.linspace(np.nanmin(fitinfo.av), np.nanmax(fitinfo.av)))
+        ax8.hist(fitinfo.av[selection], bins=np.linspace(np.nanmin(fitinfo.av[selection]), np.nanmax(fitinfo.av[selection])))
 
 
     handles, labels = ax1.get_legend_handles_labels()

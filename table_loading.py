@@ -1,5 +1,8 @@
 import numpy as np
 
+
+
+
 from astropy.io import fits
 from astropy.table import Table
 from astropy import table
@@ -35,6 +38,7 @@ from sedfitter.extinction import Extinction
 from sedfitter.source import Source
 
 from dust_extinction.parameter_averages import F19
+from dust_extinction.averages import CT06_MWLoc
 
 geometries = ["s---s-i", "s---smi", "sp--s-i", "sp--h-i", "s---smi", "s-p-smi",
               "s-p-hmi", "s-pbsmi", "s-pbhmi", "s-u-smi", "s-u-hmi", "s-ubsmi",
@@ -212,15 +216,22 @@ def get_filters():
 def make_extinction():
     # make an extinction law
     ext = F19(3.1)
+    ext2 = CT06_MWLoc()
+
 
     # https://arxiv.org/abs/0903.2057
     # 1.34 is from memory
     guyver2009_avtocol = (2.21e21 * u.cm**-2 * (1.34*u.Da)).to(u.g/u.cm**2)
     ext_wav = np.sort((np.geomspace(0.301, 8.699, 1000)/u.um).to(u.um, u.spectral()))
     ext_vals = ext.evaluate(ext_wav, Rv=3.1)
+    
+    # extend the extinction curve out
+    ext_wav2 = np.geomspace(ext_wav.max(), 27*u.um, 100)
+    ext_vals2 = ext2.evaluate(ext_wav2)
+        
     extinction = Extinction()
-    extinction.wav = ext_wav
-    extinction.chi = ext_vals / guyver2009_avtocol
+    extinction.wav = np.hstack([ext_wav, ext_wav2])
+    extinction.chi = np.hstack([ext_vals, ext_vals2]) / guyver2009_avtocol
 
     return extinction
 
@@ -237,9 +248,15 @@ def get_fitter(geometry='s-ubhmi', aperture_size=3*u.arcsec,
     # Define path to models
     model_dir = f'{robitaille_modeldir}/{geometry}'
 
-    apertures = u.Quantity([aperture_size]*len(filters))
+    if len(aperture_size) == 1:
+        apertures = u.Quantity([aperture_size]*len(filters))
+    else:
+        apertures = u.Quantity(aperture_size, u.arcsec)
+        
+    if isinstance(filters, list):
+        filters = np.array(filters)
 
-    fitter = Fitter(filter_names=np.array(filters),
+    fitter = Fitter(filter_names=filters,
                     apertures=apertures,
                     model_dir=model_dir,
                     extinction_law=extinction,
@@ -260,8 +277,12 @@ def fit_a_source(data, error, valid, geometry='s-ubhmi',
     source = Source()
 
     source.valid = valid
-    source.flux = data
-    source.error =  error
+    # if the data are given as a Jy-equivalent, convert them to mJy
+    # for cases where error is a percent, this should be a null action (so it should be OK...)
+    source.flux = u.Quantity(data, u.mJy).value
+    source.error =  u.Quantity(error, u.mJy).value
+    # https://sedfitter.readthedocs.io/en/stable/data.html
+    # this site specifies that the fitter expects flux in mJy
 
     if fitter is None:
         fitter = get_fitter(geometry=geometry, aperture_size=aperture_size,
@@ -290,7 +311,7 @@ def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
             tbl[zpn+"_flux"] = flx = np.ma.masked_where(tbl[colname].mask, (zp * 10**(data/-2.5)).to(u.mJy))
         else:
             tbl[zpn+"_flux"] = flx = (zp * 10**(data/-2.5)).to(u.mJy)
-        err = tbl[errcolname] / 1.09 * flx
+        err = tbl[errcolname] / (1.09*u.mag) * flx
         tbl[zpn+"_eflux"] = err
 
     return tbl

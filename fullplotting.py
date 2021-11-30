@@ -56,7 +56,7 @@ def binsfunction(param, kind, binsnum, chi2lim, geometries, bestfits, massnum=9)
 
 # Setting up the plot surface
 basefig = plt.figure(figsize=(20, 22))
-gs = GridSpec(nrows=5, ncols=2, height_ratios=[4,1,1,1,1])
+gs = GridSpec(nrows=5, ncols=2, height_ratios=[4,1,1,1,1], hspace=0.25, wspace=0.1)
 
 # --------------------------------
 
@@ -144,7 +144,7 @@ for geom in geometries_selection:
         ax6.hist(data['Sphere Masses'][0], bins=sphbins, alpha=histalpha, label=geom)
 
 handles, labels = ax1.get_legend_handles_labels()
-ax0.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.22,1.02))
+ax0.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.16,1.02))
 ax1.set_xlabel("Stellar Temperature (K)")
 ax2.set_xlabel("Stellar Luminosity (L$_\odot$)")
 ax3.set_xlabel("Stellar Radius (R$_\odot$)")
@@ -168,6 +168,8 @@ locfig = np.flipud(locfig)
 
 ax9 = basefig.add_subplot(gs[0, 0])
 ax9.imshow(locfig)
+ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid}\n', fontsize=25)
+ttl.set_position([.5, 1])
 #ax9.axis([90,630,90,630])
 ax9.axis([170,550,170,550])
 ax9.axis('off')

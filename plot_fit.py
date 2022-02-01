@@ -44,11 +44,11 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
 
     # just some idiot-proofing because i ran into a problem with this
     for x in datamin:
-        if x == 0:
+        if x <= 0:
             datamin.remove(x)
 
     for x in datamax:
-        if x == 0:
+        if x <= 0:
             datamax.remove(x)
 
     if len(datamin) == 0:
@@ -68,6 +68,10 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
         binsmin = min(datamin)
         binsmax = max(datamax)
         bins = np.geomspace(binsmin, binsmax, binsnum)
+        
+        
+    if np.any(np.isnan(bins)):
+        raise ValueError('found a nan')
 
     return bins
 

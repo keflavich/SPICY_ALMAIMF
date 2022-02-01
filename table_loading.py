@@ -40,9 +40,11 @@ from sedfitter.source import Source
 from dust_extinction.parameter_averages import F19
 from dust_extinction.averages import CT06_MWLoc
 
-geometries = ["s---s-i", "s---smi", "sp--s-i", "sp--h-i", "s---smi", "s-p-smi",
+geometries = ["s---s-i", "s---smi", "sp--s-i", "sp--h-i", "s-p-smi",
               "s-p-hmi", "s-pbsmi", "s-pbhmi", "s-u-smi", "s-u-hmi", "s-ubsmi",
               "spu-smi", "spu-hmi", "spubsmi", "spubhmi",]
+# s-pbhmi  s-pbsmi  sp--h-i  s-p-hmi  sp--hmi  sp--s-i  s-p-smi  sp--smi  spubhmi  spubsmi  spu-hmi  spu-smi  s---s-i  s---smi  s-ubhmi  s-ubsmi  s-u-hmi  s-u-smi
+
               
 
 def get_spicy_tbl():

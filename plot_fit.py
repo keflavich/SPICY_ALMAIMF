@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.gridspec import GridSpec
@@ -10,14 +11,16 @@ from astropy.table import Table
 
 import table_loading
 
-def datafunction(geom, deltachi2lim, bestfits):
+def datafunction(geom, deltachi2lim, bestfits, min_chi2=None):
     pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
     fitinfo = bestfits[geom]
-    selection = fitinfo.chi2 < (np.nanmin(fitinfo.chi2) + deltachi2lim)
+    if min_chi2 is None:
+        min_chi2 = np.nanmin(fitinfo.chi2)
+    selection = fitinfo.chi2 < (min_chi2 + deltachi2lim)
     data = pars[fitinfo.model_id[selection]]
     return pars, data, selection
 
-def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massnum=9):
+def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massnum=9, min_chi2=None):
     # note: the massnum indicates an index for aperture size, and is used in the
     # parameters which involve multiple aperture sizes to select just one. you'll
     # need to find out what your massnum= is if you use this.
@@ -25,7 +28,7 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
     datamin = []
     datamax = []
     for geom in geometries:
-        pars, data, selection = datafunction(geom, deltachi2lim, bestfits)
+        pars, data, selection = datafunction(geom, deltachi2lim, bestfits, min_chi2=min_chi2)
         if param in pars.keys():
             if param == "Line-of-Sight Masses":
                 dataparam = data[param]
@@ -68,12 +71,13 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
 
     return bins
 
-def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid,
-             spicyid, figurepath=os.path.expanduser('~/figures'),
+def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid=None,
+             spicyid=None, figurepath=os.path.expanduser('~/figures'),
              extinction=table_loading.make_extinction(),
              show_per_aperture=True, default_aperture=3*u.arcsec,
              robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
-             show_all_models=False, alpha_allmodels=0.1, verbose=True
+             show_all_models=False, alpha_allmodels=0.1, verbose=True,
+             min_chi2=None
             ):
 
     """
@@ -105,6 +109,9 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid,
 
     distance = (10**fitinfo.sc * u.kpc).mean()
 
+    # preserve this parameter before loop
+    recalc_min_chi2 = min_chi2 is None
+    
     for geom in geometries_selection:
 
         fitinfo = bestfits_source[geom]
@@ -134,7 +141,9 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid,
                  label=geom, alpha=0.9)
 
 
-        indices = fitinfo.chi2 < (deltachi2limit + np.nanmin(fitinfo.chi2))
+        if recalc_min_chi2:
+            min_chi2 = np.nanmin(fitinfo.chi2)
+        indices = fitinfo.chi2 < (deltachi2limit + min_chi2)
 
         if show_all_models and any(indices):
             dist_scs = ((1*u.kpc)/(10**fitinfo.sc[indices] * u.kpc))**2
@@ -158,7 +167,10 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid,
             av_scale_conv = 10**((fitinfo.av[index] * extinction.get_av(wavelengths)))
             flux = flux * distance_scale * av_scale_conv
             ax0.scatter(wavelengths, flux, marker='s', s=apertures.value, c=line.get_color())
-
+    
+    if recalc_min_chi2:
+        min_chi2 = None
+            
     ax0.loglog()
     ax0.set_xlabel('Wavelength (microns)')
     ax0.set_ylabel("Flux (mJy)")
@@ -211,7 +223,7 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid,
     # massnum index, which again has to do with aperture sizes
 
     for geom in geometries_selection:
-        pars, data, selection = datafunction(geom, deltachi2limit, bestfits_source)
+        pars, data, selection = datafunction(geom, deltachi2limit, bestfits_source, min_chi2=min_chi2)
 
         if 'star.temperature' in pars.keys():
             ax1.hist(data['star.temperature'], bins=tempbins, alpha=histalpha, label=geom)

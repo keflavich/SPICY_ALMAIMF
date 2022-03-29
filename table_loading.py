@@ -40,9 +40,9 @@ from sedfitter.source import Source
 from dust_extinction.parameter_averages import F19
 from dust_extinction.averages import CT06_MWLoc
 
-geometries = ["s---s-i", "s---smi", "sp--s-i", "sp--h-i", "s-p-smi",
-              "s-p-hmi", "s-pbsmi", "s-pbhmi", "s-u-smi", "s-u-hmi", "s-ubsmi",
-              "spu-smi", "spu-hmi", "spubsmi", "spubhmi",]
+
+geometries = ['s-pbhmi', 's-pbsmi', 'sp--h-i', 's-p-hmi', 'sp--hmi', 'sp--s-i', 's-p-smi', 'sp--smi', 'spubhmi', 'spubsmi', 'spu-hmi', 'spu-smi', 's---s-i', 's---smi', 's-ubhmi', 's-ubsmi', 's-u-hmi', 's-u-smi']
+
 # s-pbhmi  s-pbsmi  sp--h-i  s-p-hmi  sp--hmi  sp--s-i  s-p-smi  sp--smi  spubhmi  spubsmi  spu-hmi  spu-smi  s---s-i  s---smi  s-ubhmi  s-ubsmi  s-u-hmi  s-u-smi
 
               
@@ -322,6 +322,32 @@ def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
 # hacky function to extract the rows of an SED table as a plottable entry
 def getrow(tb, rownum, keys=['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0', 'S24', '70', '160', '250', '350', '500', 'ALMA-IMF_1mm_flux', 'ALMA-IMF_3mm_flux']):
     return np.array([tb[rownum][key] for key in keys])
+
+apertures_VVV = {'Ymag': 1.415*u.arcsec,
+                 'zmag': 1.415*u.arcsec,
+                 'Jmag': 1.415*u.arcsec,
+                 'Hmag': 1.415*u.arcsec,
+                 'Kmag': 1.415*u.arcsec,}
+apertures_UKIDSS = {'Ymag': 2*u.arcsec,
+                    'zmag': 2*u.arcsec,
+                    'Jmag': 2*u.arcsec,
+                    'Hmag': 2*u.arcsec,
+                    'Kmag': 2*u.arcsec,}
+apertures_spitzer = {'mag3_6': 2.4*u.arcsec,
+                     'mag4_5': 2.4*u.arcsec,
+                     'mag5_8': 2.4*u.arcsec,
+                     'mag8_0': 2.4*u.arcsec,
+                     'S24': 6*u.arcsec,
+                    }
+apertures_herschel = {'70':  10*u.arcsec,
+                      '160': 13.5*u.arcsec,
+                      '250': 23*u.arcsec,
+                      '350': 30*u.arcsec,
+                      '500': 41*u.arcsec,
+                     }
+apertures_ALMA = {'3mm': 3*u.arcsec,
+                  '1mm': 1*u.arcsec}
+
 
 
 def get_data_to_fit(rownumber, tbl, filters=filternames):

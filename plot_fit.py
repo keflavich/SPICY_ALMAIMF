@@ -43,13 +43,10 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
                 datamax.append(data[param].max())
 
     # just some idiot-proofing because i ran into a problem with this
-    for x in datamin:
-        if x <= 0:
-            datamin.remove(x)
-
-    for x in datamax:
-        if x <= 0:
-            datamax.remove(x)
+    datamin = np.array(datamin)
+    datamin = datamin[datamin>0]
+    datamax = np.array(datamax)
+    datamax = datamax[datamax>0]
 
     if len(datamin) == 0:
         return
@@ -81,7 +78,7 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid=None
              show_per_aperture=True, default_aperture=3*u.arcsec,
              robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
              show_all_models=False, alpha_allmodels=0.1, verbose=True,
-             min_chi2=None
+             min_chi2=None,
             ):
 
     """

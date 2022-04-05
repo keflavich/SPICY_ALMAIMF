@@ -73,7 +73,7 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
     return bins
 
 def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid=None,
-             spicyid=None, figurepath=os.path.expanduser('~/figures'),
+             spicyid=None, modelcount=None, figurepath=os.path.expanduser('~/figures'),
              extinction=table_loading.make_extinction(),
              show_per_aperture=True, default_aperture=3*u.arcsec,
              robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
@@ -176,7 +176,7 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid=None
     ax0.set_xlabel('Wavelength (microns)')
     ax0.set_ylabel("Flux (mJy)")
     ax0.set_xlim(0.5,1e4)
-    ax0.set_ylim(5e-4,3e4)
+    ax0.set_ylim(5e-4,3e6)
 
     # --------------------------------
 
@@ -250,8 +250,7 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid=None
         ax7.hist(distances[selection], bins=np.linspace(distances[selection].min(), distances[selection].max()))
 
         ax8.hist(fitinfo.av[selection], bins=np.linspace(np.nanmin(fitinfo.av[selection]), np.nanmax(fitinfo.av[selection])))
-
-
+    
     handles, labels = ax1.get_legend_handles_labels()
     ax0.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.16,1.02))
     ax1.set_xlabel("Stellar Temperature (K)")
@@ -277,11 +276,12 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid=None
 
         ax9 = basefig.add_subplot(gs[0, 0])
         ax9.imshow(locfig)
-        ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid}\n', fontsize=25)
+        ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid} | {modelcount} models\n', fontsize=25)
         ttl.set_position([.5, 1])
         #ax9.axis([90,630,90,630])
         ax9.axis([170,550,170,550])
         ax9.axis('off')
     elif verbose:
         print(f"Figure {figpath} doesn't exist")
-
+        
+    return basefig

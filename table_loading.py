@@ -1,8 +1,5 @@
 import numpy as np
 
-
-
-
 from astropy.io import fits
 from astropy.table import Table
 from astropy import table
@@ -42,6 +39,7 @@ from dust_extinction.averages import CT06_MWLoc
 
 
 geometries = ['s-pbhmi', 's-pbsmi', 'sp--h-i', 's-p-hmi', 'sp--hmi', 'sp--s-i', 's-p-smi', 'sp--smi', 'spubhmi', 'spubsmi', 'spu-hmi', 'spu-smi', 's---s-i', 's---smi', 's-ubhmi', 's-ubsmi', 's-u-hmi', 's-u-smi']
+
 
 # s-pbhmi  s-pbsmi  sp--h-i  s-p-hmi  sp--hmi  sp--s-i  s-p-smi  sp--smi  spubhmi  spubsmi  spu-hmi  spu-smi  s---s-i  s---smi  s-ubhmi  s-ubsmi  s-u-hmi  s-u-smi
 
@@ -346,7 +344,7 @@ apertures_herschel = {'70':  10*u.arcsec,
                       '500': 41*u.arcsec,
                      }
 apertures_ALMA = {'3mm': 3*u.arcsec,
-                  '1mm': 1*u.arcsec}
+                  '1mm': 3*u.arcsec}
 
 
 

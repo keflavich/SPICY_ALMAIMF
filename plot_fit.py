@@ -8,8 +8,28 @@ from astropy import units as u
 import sedfitter
 from sedfitter.sed import SEDCube
 from astropy.table import Table
+from astropy.modeling.models import BlackBody
 
 import table_loading
+
+def find_mass_ul(tbl, row_num, regiondistance):
+    if not np.isnan(tbl[row_num]['ALMA-IMF_1mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_flux']): 
+        alma_detect = tbl[row_num]['ALMA-IMF_1mm_flux']
+        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
+    elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_flux']): 
+        alma_detect = tbl[row_num]['ALMA-IMF_3mm_flux']
+        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
+    elif not np.isnan(tbl[row_num]['ALMA-IMF_1mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_eflux']): 
+        alma_detect = tbl[row_num]['ALMA-IMF_1mm_eflux']
+        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
+    elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_eflux']): 
+        alma_detect = tbl[row_num]['ALMA-IMF_3mm_eflux']         
+        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
+        
+    #230 for 1mm, 100 for 3mm
+    
+    return(mass_ul)
+
 
 def datafunction(geom, deltachi2lim, bestfits, min_chi2=None):
     pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
@@ -237,12 +257,15 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid=None
 
         if 'Line-of-Sight Masses' in pars.keys():
             ax4.hist(data['Line-of-Sight Masses'][:,apnum], bins=losbins, alpha=histalpha, label=geom)
-
+            ax4.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
+            
         if 'disk.mass' in pars.keys():
             ax5.hist(data['disk.mass'], bins=dscbins, alpha=histalpha, label=geom)
+            ax5.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
 
         if 'Sphere Masses' in pars.keys():
             ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom)
+            ax6.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
 
         fitinfo = bestfits_source[geom]
 

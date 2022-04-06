@@ -3,6 +3,7 @@ import os
 from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.gridspec import GridSpec
+import matplotlib.image as mpimg
 
 from astropy import units as u
 import sedfitter
@@ -92,7 +93,7 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
 
     return bins
 
-def plot_fit(bestfits_source, geometries_selection, deltachi2limit, fieldid=None,
+def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fieldid=None,
              spicyid=None, modelcount=None, figurepath=os.path.expanduser('~/figures'),
              extinction=table_loading.make_extinction(),
              show_per_aperture=True, default_aperture=3*u.arcsec,

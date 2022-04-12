@@ -96,7 +96,7 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
 def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fieldid=None,
              spicyid=None, modelcount=None, figurepath=os.path.expanduser('~/figures'),
              extinction=table_loading.make_extinction(),
-             show_per_aperture=True, default_aperture=3*u.arcsec,
+             show_per_aperture=True, default_aperture=3000*u.au,
              robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
              show_all_models=False, alpha_allmodels=0.1, verbose=True,
              min_chi2=None,
@@ -150,7 +150,8 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
         modelname = fitinfo.model_name[index]
         sed = sedcube.get_sed(modelname)
 
-        apnum = np.argmin(np.abs((default_aperture * distance).to(u.au, u.dimensionless_angles()) - sedcube.apertures))
+        #apnum = np.argmin(np.abs((default_aperture * distance).to(u.au, u.dimensionless_angles()) - sedcube.apertures))
+        apnum = np.argmin(np.abs(default_aperture - sedcube.apertures))
 
         # https://github.com/astrofrog/sedfitter/blob/41dee15bdd069132b7c2fc0f71c4e2741194c83e/sedfitter/sed/sed.py#L64
         distance_scale = (1*u.kpc/distance)**2

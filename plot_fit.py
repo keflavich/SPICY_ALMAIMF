@@ -134,6 +134,9 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
     # preserve this parameter before loop
     recalc_min_chi2 = min_chi2 is None
     
+    # store colors per geometry
+    colors = {}
+    
     for geom in geometries_selection:
 
         fitinfo = bestfits_source[geom]
@@ -162,6 +165,8 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
         line, = ax0.plot(sedcube.wav,
                  sed.flux[apnum] * distance_scale * av_scale,
                  label=geom, alpha=0.9)
+        
+        colors[geom] = line.get_color()
 
 
         if recalc_min_chi2:
@@ -249,32 +254,32 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
         pars, data, selection = datafunction(geom, deltachi2limit, bestfits_source, min_chi2=min_chi2)
 
         if 'star.temperature' in pars.keys():
-            ax1.hist(data['star.temperature'], bins=tempbins, alpha=histalpha, label=geom)
+            ax1.hist(data['star.temperature'], bins=tempbins, alpha=histalpha, label=geom, color=colors[geom])
 
         if 'Model Luminosity' in pars.keys():
-            ax2.hist(data['Model Luminosity'], bins=lumbins, alpha=histalpha, label=geom)
+            ax2.hist(data['Model Luminosity'], bins=lumbins, alpha=histalpha, label=geom, color=colors[geom])
 
         if 'star.radius' in pars.keys():
-            ax3.hist(data['star.radius'], bins=radbins, alpha=histalpha, label=geom)
+            ax3.hist(data['star.radius'], bins=radbins, alpha=histalpha, label=geom, color=colors[geom])
 
         if 'Line-of-Sight Masses' in pars.keys():
-            ax4.hist(data['Line-of-Sight Masses'][:,apnum], bins=losbins, alpha=histalpha, label=geom)
+            ax4.hist(data['Line-of-Sight Masses'][:,apnum], bins=losbins, alpha=histalpha, label=geom, color=colors[geom])
             ax4.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
             
         if 'disk.mass' in pars.keys():
-            ax5.hist(data['disk.mass'], bins=dscbins, alpha=histalpha, label=geom)
+            ax5.hist(data['disk.mass'], bins=dscbins, alpha=histalpha, label=geom, color=colors[geom])
             ax5.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
 
         if 'Sphere Masses' in pars.keys():
-            ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom)
+            ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom, color=colors[geom])
             ax6.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
 
         fitinfo = bestfits_source[geom]
 
         distances = 10**fitinfo.sc
-        ax7.hist(distances[selection], bins=np.linspace(distances[selection].min(), distances[selection].max()))
+        ax7.hist(distances[selection], bins=np.linspace(distances[selection].min(), distances[selection].max()), color=colors[geom])
 
-        ax8.hist(fitinfo.av[selection], bins=np.linspace(np.nanmin(fitinfo.av[selection]), np.nanmax(fitinfo.av[selection])))
+        ax8.hist(fitinfo.av[selection], bins=np.linspace(np.nanmin(fitinfo.av[selection]), np.nanmax(fitinfo.av[selection])), color=colors[geom])
     
     handles, labels = ax1.get_legend_handles_labels()
     ax0.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.16,1.02))

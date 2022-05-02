@@ -15,17 +15,17 @@ import table_loading
 
 def find_mass_ul(tbl, row_num, regiondistance):
     if not np.isnan(tbl[row_num]['ALMA-IMF_1mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_flux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_1mm_flux']
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
+        alma_detect = tbl[row_num]['ALMA-IMF_1mm_flux'].quantity * u.beam
+        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
     elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_flux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_3mm_flux']
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
+        alma_detect = tbl[row_num]['ALMA-IMF_3mm_flux'].quantity * u.beam
+        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
     elif not np.isnan(tbl[row_num]['ALMA-IMF_1mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_eflux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_1mm_eflux']
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
+        alma_detect = tbl[row_num]['ALMA-IMF_1mm_eflux'].quantity * u.beam
+        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
     elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_eflux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_3mm_eflux']         
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
+        alma_detect = tbl[row_num]['ALMA-IMF_3mm_eflux'].quantity * u.beam
+        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
         
     #230 for 1mm, 100 for 3mm
     
@@ -35,9 +35,10 @@ def find_mass_ul(tbl, row_num, regiondistance):
 def datafunction(geom, deltachi2lim, bestfits, min_chi2=None):
     pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
     fitinfo = bestfits[geom]
-    if min_chi2 is None:
-        min_chi2 = np.nanmin(fitinfo.chi2)
-    selection = fitinfo.chi2 < (min_chi2 + deltachi2lim)
+    #if min_chi2 is None:
+    #    min_chi2 = np.nanmin(fitinfo.chi2)
+    #selection = fitinfo.chi2 < (min_chi2 + deltachi2lim)
+    selection = fitinfo.chi2 < deltachi2lim
     data = pars[fitinfo.model_id[selection]]
     return pars, data, selection
 
@@ -126,8 +127,8 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
     valid = source.valid
     wavelengths = u.Quantity([x['wav'] for x in fitinfo.meta.filters], u.um)
     apertures = u.Quantity([x['aperture_arcsec'] for x in fitinfo.meta.filters], u.arcsec)
-    ax0.errorbar(wavelengths.value[valid==1], source.flux[valid==1], yerr=source.error[valid==1], linestyle='none', color='w', marker='o', markersize=10)
-    ax0.plot(wavelengths.value[valid==3], source.flux[valid==3], linestyle='none', color='w', marker='v', markersize=10)
+    ax0.errorbar(wavelengths.value[valid==1], source.flux[valid==1], yerr=source.error[valid==1], linestyle='none', color='w', marker='o', markersize=10, zorder=2)
+    ax0.plot(wavelengths.value[valid==3], source.flux[valid==3], linestyle='none', color='w', marker='v', markersize=10, zorder=3)
 
     distance = (10**fitinfo.sc * u.kpc).mean()
 
@@ -164,14 +165,14 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
 
         line, = ax0.plot(sedcube.wav,
                  sed.flux[apnum] * distance_scale * av_scale,
-                 label=geom, alpha=0.9)
+                 label=geom, alpha=0.9, zorder=1)
         
         colors[geom] = line.get_color()
 
 
         if recalc_min_chi2:
             min_chi2 = np.nanmin(fitinfo.chi2)
-        indices = fitinfo.chi2 < (deltachi2limit + min_chi2)
+        indices = fitinfo.chi2 < deltachi2limit
 
         if show_all_models and any(indices):
             dist_scs = ((1*u.kpc)/(10**fitinfo.sc[indices] * u.kpc))**2
@@ -181,7 +182,7 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
             lines = ax0.plot(sedcube.wav,
                              (mods * dist_scs[:,None] * av_scales).T,
                              alpha=alpha_allmodels,
-                             c=line.get_color())
+                             c=line.get_color(), zorder=1)
 
 
         if show_per_aperture:

@@ -136,16 +136,16 @@ def show_source_on_spitzer(fieldid, coords, source=None,
     tbl.remove_indices('ALMAIMF_FIELDID')
     
     if source == None:
-        x=0
-        y=len(cc)
+        start=0
+        stop=len(cc)
     else:
         tbl.add_index('SPICY')
         rownum = tbl.loc_indices[source]
-        x=rownum
-        y=rownum+1
+        start=rownum
+        stop=rownum+1
 
     ax = fig.gca()
-    ax.plot(cc[x:y].fk5.ra.deg, cc[x:y].fk5.dec.deg, 'w*', mfc='none', mec='w', markersize=17, transform=ax.get_transform('fk5'), )
+    ax.plot(cc[start:stop].fk5.ra.deg, cc[start:stop].fk5.dec.deg, 'w*', mfc='none', mec='w', markersize=17, transform=ax.get_transform('fk5'), )
     
     return fig
 

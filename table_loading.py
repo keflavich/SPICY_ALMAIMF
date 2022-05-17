@@ -419,7 +419,7 @@ def add_alma_photometry(tbl, aperture_radius=3*u.arcsec,
         phot['significant'] = phot['flux'] > 3 * alma_rms*u.beam
 
         tbl[f'ALMA-IMF_{wlname}_flux'][match] = np.where(phot['significant'], phot['flux'], np.nan)
-        tbl[f'ALMA-IMF_{wlname}_eflux'][match] = alma_rms
+        tbl[f'ALMA-IMF_{wlname}_eflux'][match] = np.where(np.isfinite(phot['flux']), alma_rms, np.nan)
 
     return tbl
 

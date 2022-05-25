@@ -1,4 +1,6 @@
 import numpy as np
+import pylab as pl
+import time
 
 from astropy.io import fits
 from astropy.table import Table
@@ -11,12 +13,16 @@ from astropy.stats import sigma_clipped_stats
 from astropy import wcs
 from astropy.wcs import WCS
 
+from astropy.table import QTable
+from astropy.modeling.models import BlackBody
+
 from astroquery.vizier import Vizier
 from astroquery.svo_fps import SvoFps
 
 import photutils
 
-import tqdm
+from tqdm import tqdm
+from tqdm.notebook import tqdm_notebook
 
 from spectral_cube import SpectralCube
 import os

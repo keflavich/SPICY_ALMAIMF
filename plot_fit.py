@@ -98,7 +98,7 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
              extinction=table_loading.make_extinction(),
              show_per_aperture=True, default_aperture=3000*u.au,
              robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
-             show_all_models=False, alpha_allmodels=0.1, verbose=True,
+             show_all_models=False, alpha_allmodels=None, verbose=True,
              min_chi2=None,
             ):
 
@@ -136,6 +136,19 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
     
     # store colors per geometry
     colors = {}
+    
+    # scale alpha based on number of models
+    if show_all_models and alpha_allmodels==None:
+        if modelcount <= 50:
+            alpha_allmodels = 0.5
+        if 50 < modelcount <= 100:
+            alpha_allmodels = 0.4
+        if 100 < modelcount <= 1000:
+            alpha_allmodels = 0.3
+        if 1000 < modelcount <= 2000:
+            alpha_allmodels = 0.1
+        if 2000 < modelcount:
+            alpha_allmodels = 0.05
     
     for geom in geometries_selection:
 

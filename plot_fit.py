@@ -126,8 +126,6 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
     valid = source.valid
     wavelengths = u.Quantity([x['wav'] for x in fitinfo.meta.filters], u.um)
     apertures = u.Quantity([x['aperture_arcsec'] for x in fitinfo.meta.filters], u.arcsec)
-    ax0.errorbar(wavelengths.value[valid==1], source.flux[valid==1], yerr=source.error[valid==1], linestyle='none', color='w', marker='o', markersize=10)
-    ax0.plot(wavelengths.value[valid==3], source.flux[valid==3], linestyle='none', color='w', marker='v', markersize=10)
 
     distance = (10**fitinfo.sc * u.kpc).mean()
 
@@ -195,6 +193,9 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
             av_scale_conv = 10**((fitinfo.av[index] * extinction.get_av(wavelengths)))
             flux = flux * distance_scale * av_scale_conv
             ax0.scatter(wavelengths, flux, marker='s', s=apertures.value, c=line.get_color())
+    
+    ax0.errorbar(wavelengths.value[valid==1], source.flux[valid==1], yerr=source.error[valid==1], linestyle='none', color='w', marker='o', markersize=10)
+    ax0.plot(wavelengths.value[valid==3], source.flux[valid==3], linestyle='none', color='w', marker='v', markersize=10)
     
     if recalc_min_chi2:
         min_chi2 = None

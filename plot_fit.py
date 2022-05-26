@@ -138,7 +138,7 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
     colors = {}
     
     # scale alpha based on number of models
-    if show_all_models and alpha_allmodels==None:
+    if show_all_models and alpha_allmodels is None:
         if modelcount <= 50:
             alpha_allmodels = 0.5
         if 50 < modelcount <= 100:

@@ -32,16 +32,16 @@ def find_mass_ul(tbl, row_num, regiondistance):
     return(mass_ul)
 
 
-def datafunction(geom, deltachi2lim, bestfits, min_chi2=None):
+def datafunction(geom, chi2limit, bestfits, min_chi2=None):
     pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
     fitinfo = bestfits[geom]
     if min_chi2 is None:
         min_chi2 = np.nanmin(fitinfo.chi2)
-    selection = fitinfo.chi2 < (min_chi2 + deltachi2lim)
+    selection = fitinfo.chi2 < chi2limit
     data = pars[fitinfo.model_id[selection]]
     return pars, data, selection
 
-def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massnum=9, min_chi2=None):
+def binsfunction(param, kind, binsnum, chi2limit, geometries, bestfits, massnum=9, min_chi2=None):
     # note: the massnum indicates an index for aperture size, and is used in the
     # parameters which involve multiple aperture sizes to select just one. you'll
     # need to find out what your massnum= is if you use this.
@@ -49,7 +49,7 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
     datamin = []
     datamax = []
     for geom in geometries:
-        pars, data, selection = datafunction(geom, deltachi2lim, bestfits, min_chi2=min_chi2)
+        pars, data, selection = datafunction(geom, chi2limit, bestfits, min_chi2=min_chi2)
         if param in pars.keys():
             if param == "Line-of-Sight Masses":
                 dataparam = data[param]
@@ -93,8 +93,8 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
 
     return bins
 
-def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fieldid=None,
-             spicyid=None, modelcount=None, figurepath=os.path.expanduser('~/figures'),
+def plot_fit(bestfits_source, geometries_selection, filepath, chi2limit, mass_ul, fieldid=None,
+             spicyid=None, modelcount=None,
              extinction=table_loading.make_extinction(),
              show_per_aperture=True, default_aperture=3000*u.au,
              robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
@@ -135,7 +135,6 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
     # store colors per geometry
     colors = {}
     
-    # scale alpha based on number of models
     if show_all_models and alpha_allmodels is None:
         if modelcount <= 50:
             alpha_allmodels = 0.5
@@ -182,7 +181,7 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
 
         if recalc_min_chi2:
             min_chi2 = np.nanmin(fitinfo.chi2)
-        indices = fitinfo.chi2 < (deltachi2limit + min_chi2)
+        indices = fitinfo.chi2 < chi2limit
 
         if show_all_models and any(indices):
             dist_scs = ((1*u.kpc)/(10**fitinfo.sc[indices] * u.kpc))**2
@@ -251,21 +250,21 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
     #radbins = binsfunction('star.radius', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
     radbins = np.geomspace(0.1, 100, 50)
     try:
-        losbins = binsfunction('Line-of-Sight Masses', 'log', 20, deltachi2limit, geometries_selection, bestfits_source, 0)
+        losbins = binsfunction('Line-of-Sight Masses', 'log', 20, chi2limit, geometries_selection, bestfits_source, 0)
     except ValueError:
         losbins = np.geomspace(1e-4,10)
     try:
-        dscbins = binsfunction('disk.mass', 'log', lognum, deltachi2limit, geometries_selection, bestfits_source)
+        dscbins = binsfunction('disk.mass', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
     except ValueError:
         # this is OK; some models don't have disks
         pass
-    sphbins = binsfunction('Sphere Masses', 'log', 50, deltachi2limit, geometries_selection, bestfits_source, 0)
+    sphbins = binsfunction('Sphere Masses', 'log', 50, chi2limit, geometries_selection, bestfits_source, 0)
 
     # index values used above and below for mass-related parameters should, i think, be the same as your
     # massnum index, which again has to do with aperture sizes
 
     for geom in geometries_selection:
-        pars, data, selection = datafunction(geom, deltachi2limit, bestfits_source, min_chi2=min_chi2)
+        pars, data, selection = datafunction(geom, chi2limit, bestfits_source, min_chi2=min_chi2)
 
         if 'star.temperature' in pars.keys():
             ax1.hist(data['star.temperature'], bins=tempbins, alpha=histalpha, label=geom, color=colors[geom])
@@ -313,7 +312,8 @@ def plot_fit(bestfits_source, geometries_selection, deltachi2limit, mass_ul, fie
     _=ax6.semilogx()
 
     # reading the saved image of the region with source location marked
-    figpath = f'{figurepath}/{fieldid}_{spicyid}.png'
+    # figurepath=os.path.expanduser('~/figures')
+    figpath = f'{filepath}/Location_figures/{fieldid}/{spicyid}.png'
     if os.path.exists(figpath):
         locfig = mpimg.imread(figpath)
         locfig = np.flipud(locfig)

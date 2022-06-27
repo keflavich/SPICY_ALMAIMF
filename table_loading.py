@@ -135,21 +135,25 @@ def show_source_on_spitzer(fieldid, coords, source=None,
     matches = ww.footprint_contains(coords)
 
     cc = coords[matches]
+    ax = fig.gca()
+    
     tbl.add_index('ALMAIMF_FIELDID')
     tbl = tbl.loc[fieldid]
-    tbl.remove_indices('ALMAIMF_FIELDID')
-    
-    if source == None:
-        start=0
-        stop=len(cc)
-    else:
-        tbl.add_index('SPICY')
-        rownum = tbl.loc_indices[source]
-        start=rownum
-        stop=rownum+1
-
-    ax = fig.gca()
-    ax.plot(cc[start:stop].fk5.ra.deg, cc[start:stop].fk5.dec.deg, 'w*', mfc='none', mec='w', markersize=17, transform=ax.get_transform('fk5'), )
+    try:
+        tbl.remove_indices('ALMAIMF_FIELDID')
+        
+        if source == None:
+            start=0
+            stop=len(cc)
+        else:
+            tbl.add_index('SPICY')
+            rownum = tbl.loc_indices[source]
+            start=rownum
+            stop=rownum+1
+        ax.plot(cc[start:stop].fk5.ra.deg, cc[start:stop].fk5.dec.deg, 'w*', mfc='none', mec='w', markersize=17, transform=ax.get_transform('fk5'), )
+        
+    except AttributeError:
+        ax.plot(cc.fk5.ra.deg, cc.fk5.dec.deg, 'w*', mfc='none', mec='w', markersize=17, transform=ax.get_transform('fk5'), )
     
     return fig
 

@@ -93,8 +93,8 @@ def binsfunction(param, kind, binsnum, chi2limit, geometries, bestfits, massnum=
 
     return bins
 
-def plot_fit(bestfits_source, geometries_selection, filepath, chi2limit, mass_ul=None, fieldid=None,
-             spicyid=None, modelcount=None,
+def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fieldid=None,
+             spicyid=None, modelcount=None, figurepath=os.path.expanduser('~/figures'),
              extinction=table_loading.make_extinction(),
              show_per_aperture=True, default_aperture=3000*u.au,
              robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',

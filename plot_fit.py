@@ -93,12 +93,12 @@ def binsfunction(param, kind, binsnum, chi2limit, geometries, bestfits, massnum=
 
     return bins
 
-def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul, fieldid=None,
+def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fieldid=None,
              spicyid=None, modelcount=None, figurepath=os.path.expanduser('~/figures'),
              extinction=table_loading.make_extinction(),
              show_per_aperture=True, default_aperture=3000*u.au,
              robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
-             show_all_models=False, alpha_allmodels=0.1, verbose=True,
+             show_all_models=False, alpha_allmodels=None, verbose=True,
              min_chi2=None,
             ):
 
@@ -126,8 +126,6 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul, fieldid=
     valid = source.valid
     wavelengths = u.Quantity([x['wav'] for x in fitinfo.meta.filters], u.um)
     apertures = u.Quantity([x['aperture_arcsec'] for x in fitinfo.meta.filters], u.arcsec)
-    ax0.errorbar(wavelengths.value[valid==1], source.flux[valid==1], yerr=source.error[valid==1], linestyle='none', color='w', marker='o', markersize=10)
-    ax0.plot(wavelengths.value[valid==3], source.flux[valid==3], linestyle='none', color='w', marker='v', markersize=10)
 
     distance = (10**fitinfo.sc * u.kpc).mean()
 
@@ -136,6 +134,18 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul, fieldid=
     
     # store colors per geometry
     colors = {}
+    
+    if show_all_models and alpha_allmodels is None:
+        if modelcount <= 50:
+            alpha_allmodels = 0.5
+        if 50 < modelcount <= 100:
+            alpha_allmodels = 0.4
+        if 100 < modelcount <= 1000:
+            alpha_allmodels = 0.3
+        if 1000 < modelcount <= 2000:
+            alpha_allmodels = 0.1
+        if 2000 < modelcount:
+            alpha_allmodels = 0.05
     
     for geom in geometries_selection:
 
@@ -195,6 +205,9 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul, fieldid=
             av_scale_conv = 10**((fitinfo.av[index] * extinction.get_av(wavelengths)))
             flux = flux * distance_scale * av_scale_conv
             ax0.scatter(wavelengths, flux, marker='s', s=apertures.value, c=line.get_color())
+    
+    ax0.errorbar(wavelengths.value[valid==1], source.flux[valid==1], yerr=source.error[valid==1], linestyle='none', color='w', marker='o', markersize=10)
+    ax0.plot(wavelengths.value[valid==3], source.flux[valid==3], linestyle='none', color='w', marker='v', markersize=10)
     
     if recalc_min_chi2:
         min_chi2 = None
@@ -264,15 +277,18 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul, fieldid=
 
         if 'Line-of-Sight Masses' in pars.keys():
             ax4.hist(data['Line-of-Sight Masses'][:,apnum], bins=losbins, alpha=histalpha, label=geom, color=colors[geom])
-            ax4.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
+            if mass_ul is not None:
+                ax4.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
             
         if 'disk.mass' in pars.keys():
             ax5.hist(data['disk.mass'], bins=dscbins, alpha=histalpha, label=geom, color=colors[geom])
-            ax5.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
+            if mass_ul is not None:
+                ax5.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
 
         if 'Sphere Masses' in pars.keys():
             ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom, color=colors[geom])
-            ax6.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
+            if mass_ul is not None:
+                ax6.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
 
         fitinfo = bestfits_source[geom]
 
@@ -299,7 +315,8 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul, fieldid=
     _=ax6.semilogx()
 
     # reading the saved image of the region with source location marked
-    figpath = f'{figurepath}/{fieldid}_{spicyid}.png'
+    # figurepath=os.path.expanduser('~/figures')
+    figpath = f'{filepath}/Location_figures/{fieldid}/{spicyid}.png'
     if os.path.exists(figpath):
         locfig = mpimg.imread(figpath)
         locfig = np.flipud(locfig)

@@ -1,4 +1,6 @@
 import numpy as np
+import pylab as pl
+import time
 
 from astropy.io import fits
 from astropy.table import Table
@@ -11,12 +13,16 @@ from astropy.stats import sigma_clipped_stats
 from astropy import wcs
 from astropy.wcs import WCS
 
+from astropy.table import QTable
+from astropy.modeling.models import BlackBody
+
 from astroquery.vizier import Vizier
 from astroquery.svo_fps import SvoFps
 
 import photutils
 
-import tqdm
+from tqdm import tqdm
+from tqdm.notebook import tqdm_notebook
 
 from spectral_cube import SpectralCube
 import os
@@ -111,9 +117,12 @@ def find_ALMAIMF_matches(tbl):
     return tbl
 
 
-def show_source_on_spitzer(fieldid, coords,
+def show_source_on_spitzer(fieldid, coords, source=None,
                            basepath='/orange/adamginsburg/ALMA_IMF/2017.1.01355.L/RestructuredImagingResults',
                            mips=False):
+    
+    tbl = Table.read('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF/SPICY_withAddOns.fits')
+    
     pfxs = prefixes[fieldid]
     fig = show_fov_on_spitzer(**{key: f'{basepath}/{val}' for key,val in pfxs.items()},
                               fieldid=fieldid, spitzerpath=f'{basepath}/spitzer_datapath',
@@ -126,11 +135,27 @@ def show_source_on_spitzer(fieldid, coords,
     matches = ww.footprint_contains(coords)
 
     cc = coords[matches]
-
     ax = fig.gca()
-    ax.plot(cc.fk5.ra.deg, cc.fk5.dec.deg, 'wo', mfc='none', mec='w', markersize=10, transform=ax.get_transform('fk5'), )
-
-
+    
+    tbl.add_index('ALMAIMF_FIELDID')
+    tbl = tbl.loc[fieldid]
+    try:
+        tbl.remove_indices('ALMAIMF_FIELDID')
+        
+        if source == None:
+            start=0
+            stop=len(cc)
+        else:
+            tbl.add_index('SPICY')
+            rownum = tbl.loc_indices[source]
+            start=rownum
+            stop=rownum+1
+        ax.plot(cc[start:stop].fk5.ra.deg, cc[start:stop].fk5.dec.deg, 'w*', mfc='none', mec='w', markersize=17, transform=ax.get_transform('fk5'), )
+        
+    except AttributeError:
+        ax.plot(cc.fk5.ra.deg, cc.fk5.dec.deg, 'w*', mfc='none', mec='w', markersize=17, transform=ax.get_transform('fk5'), )
+    
+    return fig
 
 
 def get_filters():
@@ -419,7 +444,7 @@ def add_alma_photometry(tbl, aperture_radius=3*u.arcsec,
         phot['significant'] = phot['flux'] > 3 * alma_rms*u.beam
 
         tbl[f'ALMA-IMF_{wlname}_flux'][match] = np.where(phot['significant'], phot['flux'], np.nan)
-        tbl[f'ALMA-IMF_{wlname}_eflux'][match] = alma_rms
+        tbl[f'ALMA-IMF_{wlname}_eflux'][match] = np.where(np.isfinite(phot['flux']), alma_rms, np.nan)
 
     return tbl
 

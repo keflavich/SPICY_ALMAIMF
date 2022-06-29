@@ -93,7 +93,7 @@ def binsfunction(param, kind, binsnum, chi2limit, geometries, bestfits, massnum=
 
     return bins
 
-def plot_fit(bestfits_source, geometries_selection, filepath, chi2limit, mass_ul, fieldid=None,
+def plot_fit(bestfits_source, geometries_selection, filepath, chi2limit, mass_ul=None, fieldid=None,
              spicyid=None, modelcount=None,
              extinction=table_loading.make_extinction(),
              show_per_aperture=True, default_aperture=3000*u.au,
@@ -277,15 +277,18 @@ def plot_fit(bestfits_source, geometries_selection, filepath, chi2limit, mass_ul
 
         if 'Line-of-Sight Masses' in pars.keys():
             ax4.hist(data['Line-of-Sight Masses'][:,apnum], bins=losbins, alpha=histalpha, label=geom, color=colors[geom])
-            ax4.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
+            if mass_ul is not None:
+                ax4.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
             
         if 'disk.mass' in pars.keys():
             ax5.hist(data['disk.mass'], bins=dscbins, alpha=histalpha, label=geom, color=colors[geom])
-            ax5.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
+            if mass_ul is not None:
+                ax5.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
 
         if 'Sphere Masses' in pars.keys():
             ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom, color=colors[geom])
-            ax6.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
+            if mass_ul is not None:
+                ax6.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
 
         fitinfo = bestfits_source[geom]
 

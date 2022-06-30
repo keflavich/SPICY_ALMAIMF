@@ -94,7 +94,8 @@ def binsfunction(param, kind, binsnum, chi2limit, geometries, bestfits, massnum=
     return bins
 
 def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fieldid=None,
-             spicyid=None, modelcount=None, figurepath=os.path.expanduser('~/figures'),
+             spicyid=None, modelcount=None,
+             filepath='/blue/adamginsbug/adamginsburg/SPICY_ALMAIMF/',
              extinction=table_loading.make_extinction(),
              show_per_aperture=True, default_aperture=3000*u.au,
              robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
@@ -317,7 +318,6 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fie
     _=ax6.semilogx()
 
     # reading the saved image of the region with source location marked
-    # figurepath=os.path.expanduser('~/figures')
     figpath = f'{filepath}/Location_figures/{fieldid}/{spicyid}.png'
     if os.path.exists(figpath):
         locfig = mpimg.imread(figpath)

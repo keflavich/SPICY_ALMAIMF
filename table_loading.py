@@ -287,6 +287,7 @@ def get_fitter(geometry='s-ubhmi', aperture_size=3*u.arcsec,
                     extinction_law=extinction,
                     distance_range=distance_range,
                     av_range=av_range,
+                    use_memmap=True
                    )
 
     return fitter
@@ -297,6 +298,7 @@ def fit_a_source(data, error, valid, geometry='s-ubhmi',
                  aperture_size=3*u.arcsec, distance_range=[1.8, 2.2]*u.kpc,
                  av_range=[4,40],
                  fitter=None,
+                 stash_to_mmap=False,
                 ):
 
     source = Source()
@@ -317,6 +319,17 @@ def fit_a_source(data, error, valid, geometry='s-ubhmi',
 
     # Run the fitting
     fitinfo = fitter.fit(source)
+
+    if stash_to_mmap:
+        from tempfile import mkdtemp
+        import os.path as path
+        filename = path.join(mkdtemp(), f'{geometry}.dat')
+        fp = np.memmap(filename, dtype='float32', mode='w+', shape=fitinfo.model_fluxes.shape)
+        fp[:] = fitinfo.model_fluxes[:]
+        fp.flush()
+        fitinfo.model_fluxes = fp
+        print(f"Moved array with size {fitinfo.model_fluxes.shape} to {fp.filename}")
+
 
     return fitinfo
 

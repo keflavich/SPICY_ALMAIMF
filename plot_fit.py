@@ -15,17 +15,17 @@ import table_loading
 
 def find_mass_ul(tbl, row_num, regiondistance):
     if not np.isnan(tbl[row_num]['ALMA-IMF_1mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_flux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_1mm_flux']
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
+        alma_detect = tbl[row_num]['ALMA-IMF_1mm_flux'].quantity * u.beam
+        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
     elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_flux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_3mm_flux']
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
+        alma_detect = tbl[row_num]['ALMA-IMF_3mm_flux'].quantity * u.beam
+        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
     elif not np.isnan(tbl[row_num]['ALMA-IMF_1mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_eflux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_1mm_eflux']
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
+        alma_detect = tbl[row_num]['ALMA-IMF_1mm_eflux'].quantity * u.beam
+        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
     elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_eflux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_3mm_eflux']         
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
+        alma_detect = tbl[row_num]['ALMA-IMF_3mm_eflux'].quantity * u.beam
+        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
         
     #230 for 1mm, 100 for 3mm
     

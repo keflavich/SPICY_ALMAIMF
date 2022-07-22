@@ -344,7 +344,7 @@ def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
     for colname, errcolname, zpn in zip(magcols, emagcols, filternames):
         print(colname, zpn)
         zp = u.Quantity(zpts[zpn], u.Jy)
-        if colname in tbl.keys():
+        if colname in tbl:
             data = tbl[colname].value
             if hasattr(tbl[colname], 'mask'):
                 tbl[zpn+"_flux"] = flx = np.ma.masked_where(tbl[colname].mask, (zp * 10**(data/-2.5)).to(u.mJy))

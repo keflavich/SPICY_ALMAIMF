@@ -352,7 +352,8 @@ def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
                 tbl[zpn+"_flux"] = flx = (zp * 10**(data/-2.5)).to(u.mJy)
             err = tbl[errcolname] / (1.09*u.mag) * flx
             tbl[zpn+"_eflux"] = err
-        else: print(f'{colname} not found.')
+        else:
+            print(f'{colname} not found.')
 
     return tbl
 

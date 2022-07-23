@@ -93,7 +93,7 @@ def add_VVV_matches(tbl):
     return rslt
 
 
-def find_ALMAIMF_matches(tbl):
+def find_ALMAIMF_matches(tbl, coords):
     # determine number of SPICY sources in each ALMA FOV
     os.chdir('/orange/adamginsburg/ALMA_IMF/May2021Release/')
 
@@ -344,13 +344,16 @@ def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
     for colname, errcolname, zpn in zip(magcols, emagcols, filternames):
         print(colname, zpn)
         zp = u.Quantity(zpts[zpn], u.Jy)
-        data = tbl[colname].value
-        if hasattr(tbl[colname], 'mask'):
-            tbl[zpn+"_flux"] = flx = np.ma.masked_where(tbl[colname].mask, (zp * 10**(data/-2.5)).to(u.mJy))
+        if colname in tbl:
+            data = tbl[colname].value
+            if hasattr(tbl[colname], 'mask'):
+                tbl[zpn+"_flux"] = flx = np.ma.masked_where(tbl[colname].mask, (zp * 10**(data/-2.5)).to(u.mJy))
+            else:
+                tbl[zpn+"_flux"] = flx = (zp * 10**(data/-2.5)).to(u.mJy)
+            err = tbl[errcolname] / (1.09*u.mag) * flx
+            tbl[zpn+"_eflux"] = err
         else:
-            tbl[zpn+"_flux"] = flx = (zp * 10**(data/-2.5)).to(u.mJy)
-        err = tbl[errcolname] / (1.09*u.mag) * flx
-        tbl[zpn+"_eflux"] = err
+            print(f'{colname} not found.')
 
     return tbl
 
@@ -387,6 +390,10 @@ apertures_ALMA = {'3mm': 3*u.arcsec,
 
 
 def get_data_to_fit(rownumber, tbl, filters=filternames):
+    for key in filters:
+        if key+"_flux" not in tbl.keys():
+            tbl[key+"_flux"] = [np.nan for row in tbl]
+            tbl[key+"_eflux"] = [np.nan for row in tbl]
 
     flx = getrow(tbl, rownumber, keys=[key+"_flux" for key in filters])
     error = getrow(tbl, rownumber, keys=[key+"_eflux" for key in filters])
@@ -472,7 +479,7 @@ def get_flx(crd, data, ww):
 
 def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orange/adamginsburg/higal/'):
     rows = []
-    for crd in tqdm.tqdm(coords.galactic):
+    for crd in tqdm(coords.galactic):
         galrnd = int(crd.galactic.l.deg)
         flx = {wl: np.nan for wl in wls}
         # search +/- 2 deg:
@@ -490,7 +497,7 @@ def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orang
                     if flx_[70] != 0:
                         flx[70] = flx_[70]
                         flx[160] = flx_[160]
-                    if not np.isnan(flx_[250]):
+                    if 250 in flx_ and not np.isnan(flx_[250]):
                         flx[250] = flx_[250]
                         flx[350] = flx_[350]
                         flx[500] = flx_[500]
@@ -538,7 +545,7 @@ def add_mips_limits(tbl, coords, mipspath='/orange/adamginsburg/spitzer/mips/'):
     debug_counter = 0
 
     rows = []
-    for crd in tqdm.tqdm(coords.galactic):
+    for crd in tqdm(coords.galactic):
         match = False
         for fn, ww in footprints.items():
             if ww.footprint_contains(crd):

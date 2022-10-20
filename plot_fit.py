@@ -144,13 +144,13 @@ def plot_fit(bestfits_source, geometries_selection, filepath, chi2limit, mass_ul
     if show_all_models and alpha_allmodels is None:
         if modelcount <= 50:
             alpha_allmodels = 0.5
-        if 50 < modelcount <= 100:
+        elif 50 < modelcount <= 100:
             alpha_allmodels = 0.4
-        if 100 < modelcount <= 1000:
+        elif 100 < modelcount <= 1000:
             alpha_allmodels = 0.3
-        if 1000 < modelcount <= 2000:
+        elif 1000 < modelcount <= 2000:
             alpha_allmodels = 0.1
-        if 2000 < modelcount:
+        elif 2000 < modelcount:
             alpha_allmodels = 0.05
     
     for geom in geometries_selection:

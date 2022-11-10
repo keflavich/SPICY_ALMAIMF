@@ -91,6 +91,26 @@ def add_VVV_matches(tbl):
     rslt = table.join(tbl, virac_match, join_type='left', keys='VIRAC')
     rslt['VIRAC'].mask = mskvirac
     return rslt
+  
+def add_UKIDSS_matches(tbl):
+    tbl['UKIDSS'] = table.MaskedColumn(tbl['UKIDSS'])
+    mskukidss = [tbl['UKIDSS'] == '                   ']
+    tbl['UKIDSS'][mskukidss] = np.ma.masked
+    tbl['UKIDSS'][mskukidss].mask = [mskukidss]
+
+    ukidss_numbers = tbl['UKIDSS']
+    row_limit = len(tbl)
+    # VIRAC uses numbers, not IDs, so we can just do comma-separated
+    ukidss_match = Vizier(row_limit=row_limit).query_constraints(srcid=",".join(map(str, ukidss_numbers[~ukidss_numbers.mask])),
+                                                           catalog='II/316/gps6')[0]
+    ukidss_match.rename_column('UGPS','UKIDSS')
+
+    mskukidss = tbl['UKIDSS'].mask
+    tbl['UKIDSS'].mask = False
+    tbl['UKIDSS'][mskukidss] = -99999
+    rslt = table.join(tbl, ukidss_match, join_type='left', keys='UKIDSS')
+    rslt['UKIDSS'].mask = mskukidss
+    return rslt
 
 
 def find_ALMAIMF_matches(tbl, coords):

@@ -98,7 +98,7 @@ def plot_fit(bestfits_source, geometries_selection, filepath, chi2limit, mass_ul
              spicyid=None, modelcount=None,
              extinction=table_loading.make_extinction(),
              show_per_aperture=True, default_aperture=3000*u.au,
-             robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2',
+             robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2/',
              show_all_models=False, alpha_allmodels=None, verbose=True,
              min_chi2=None,
             ):
@@ -281,7 +281,7 @@ def plot_fit(bestfits_source, geometries_selection, filepath, chi2limit, mass_ul
         if 'Line-of-Sight Masses' in pars.keys():
             ax4.hist(data['Line-of-Sight Masses'][:,apnum], bins=losbins, alpha=histalpha, label=geom, color=colors[geom])
             if not np.isnan(mass_ul):
-                ax4.axvline(mass_ul*1/u.M_sun, color='r', linestyle='dashed', linewidth=3)
+                ax4.axvline(mass_ul/u.M_sun, color='r', linestyle='dashed', linewidth=3)
             
         if 'disk.mass' in pars.keys():
             ax5.hist(data['disk.mass'], bins=dscbins, alpha=histalpha, label=geom, color=colors[geom])

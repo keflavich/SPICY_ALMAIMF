@@ -93,10 +93,29 @@ def add_VVV_matches(tbl):
     rslt['VIRAC'].mask = mskvirac
     return rslt
 
+def add_UKIDSS_matches(tbl):
+    tbl['UKIDSS'] = table.MaskedColumn(tbl['UKIDSS'])
+    mskukidss = [tbl['UKIDSS'] == '                   ']
+    tbl['UKIDSS'][mskukidss] = np.ma.masked
+    tbl['UKIDSS'][mskukidss].mask = [mskukidss]
 
+    ukidss_numbers = tbl['UKIDSS']
+    row_limit = len(tbl)
+    # VIRAC uses numbers, not IDs, so we can just do comma-separated
+    ukidss_match = Vizier(row_limit=row_limit).query_constraints(srcid=",".join(map(str, ukidss_numbers[~ukidss_numbers.mask])),
+                                                           catalog='II/316/gps6')[0]
+    ukidss_match.rename_column('UGPS','UKIDSS')
+
+    mskukidss = tbl['UKIDSS'].mask
+    tbl['UKIDSS'].mask = False
+    tbl['UKIDSS'][mskukidss] = -99999
+    rslt = table.join(tbl, ukidss_match, join_type='left', keys='UKIDSS')
+    rslt['UKIDSS'].mask = mskukidss
+    return rslt
+  
 def find_ALMAIMF_matches(tbl, coords):
     # determine number of SPICY sources in each ALMA FOV
-    os.chdir('/orange/adamginsburg/ALMA_IMF/May2021Release/')
+    os.chdir('/orange/adamginsburg/web/secure/ALMA-IMF/May2021Release/')
 
     prefixes['W43MM1'] = dict(
         finaliter_prefix_b3="W43-MM1/B3/cleanest/W43-MM1_B3_uid___A001_X1296_X1af_continuum_merged_12M_robust0_selfcal4_finaliter",
@@ -162,23 +181,40 @@ def show_source_on_spitzer(fieldid, coords, source=None,
     
     return fig
 
-
-def get_filters():
+def get_filters(hemisphere='south'):
     # these are the official filternames on SVO_FPS
-    filternames = ['Paranal/VISTA.Y', 'Paranal/VISTA.Z', 'Paranal/VISTA.J', 'Paranal/VISTA.H', 'Paranal/VISTA.Ks',
+    if hemisphere == 'north':
+        filternames = ['UKIRT/UKIDSS.J', 'UKIRT/UKIDSS.H', 'UKIRT/UKIDSS.K',
                    'Spitzer/IRAC.I1', 'Spitzer/IRAC.I2', 'Spitzer/IRAC.I3', 'Spitzer/IRAC.I4', 'Spitzer/MIPS.24mu',
                    'Herschel/Pacs.blue', 'Herschel/Pacs.red', 'Herschel/SPIRE.PSW', 'Herschel/SPIRE.PMW', 'Herschel/SPIRE.PLW'
                   ]
-    # keep only the non "_ext" SPIRE filters (but we should look up which is more appropriate)
-    spire_filters = SvoFps.get_filter_list(facility='Herschel', instrument='Spire')
-    spire_filters = spire_filters[['_ext' not in fid for fid in spire_filters['filterID']]]
-
-    filter_meta = table.vstack([SvoFps.get_filter_list(facility='Paranal', instrument='VIRCAM'),
+        # keep only the non "_ext" SPIRE filters (but we should look up which is more appropriate)
+        spire_filters = SvoFps.get_filter_list(facility='Herschel', instrument='Spire')
+        spire_filters = spire_filters[['_ext' not in fid for fid in spire_filters['filterID']]]
+        
+        filter_meta = table.vstack([SvoFps.get_filter_list(facility='UKIRT', instrument='WFCAM'),
                                 SvoFps.get_filter_list(facility='Spitzer', instrument='IRAC'),
                                 SvoFps.get_filter_list(facility='Spitzer', instrument='MIPS')[0],
                                 SvoFps.get_filter_list(facility='Herschel', instrument='Pacs'),
                                 spire_filters,
                                ])
+        
+    elif hemisphere == 'south':
+        filternames = ['Paranal/VISTA.Y', 'Paranal/VISTA.Z', 'Paranal/VISTA.J', 'Paranal/VISTA.H', 'Paranal/VISTA.Ks',
+                   'Spitzer/IRAC.I1', 'Spitzer/IRAC.I2', 'Spitzer/IRAC.I3', 'Spitzer/IRAC.I4', 'Spitzer/MIPS.24mu',
+                   'Herschel/Pacs.blue', 'Herschel/Pacs.red', 'Herschel/SPIRE.PSW', 'Herschel/SPIRE.PMW', 'Herschel/SPIRE.PLW'
+                  ]
+        # keep only the non "_ext" SPIRE filters (but we should look up which is more appropriate)
+        spire_filters = SvoFps.get_filter_list(facility='Herschel', instrument='Spire')
+        spire_filters = spire_filters[['_ext' not in fid for fid in spire_filters['filterID']]]
+        
+        filter_meta = table.vstack([SvoFps.get_filter_list(facility='Paranal', instrument='VIRCAM'),
+                                SvoFps.get_filter_list(facility='Spitzer', instrument='IRAC'),
+                                SvoFps.get_filter_list(facility='Spitzer', instrument='MIPS')[0],
+                                SvoFps.get_filter_list(facility='Herschel', instrument='Pacs'),
+                                spire_filters,
+                               ])
+
     zpts = {filtername: filter_meta[filter_meta['filterID']==filtername]['ZeroPoint'] for filtername in filternames}
 
     filtercurves = {filtername: SvoFps.get_transmission_data(filtername) for filtername in filternames}
@@ -264,7 +300,6 @@ def make_extinction():
     extinction.chi = np.hstack([ext_vals, ext_vals2]) / guyver2009_avtocol
 
     return extinction
-
 
 sed_filters, wavelength_dict, filternames, zpts = get_filters()
 

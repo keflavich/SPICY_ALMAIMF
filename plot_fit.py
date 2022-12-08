@@ -33,7 +33,6 @@ def find_mass_ul(tbl, row_num, regiondistance):
     
     return(mass_ul)
 
-
 def datafunction(geom, chi2limit, bestfits, min_chi2=None):
     pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
     fitinfo = bestfits[geom]
@@ -144,13 +143,13 @@ def plot_fit(bestfits_source, geometries_selection, filepath, chi2limit, mass_ul
     if show_all_models and alpha_allmodels is None:
         if modelcount <= 50:
             alpha_allmodels = 0.5
-        elif 50 < modelcount <= 100:
+        if 50 < modelcount <= 100:
             alpha_allmodels = 0.4
-        elif 100 < modelcount <= 1000:
+        if 100 < modelcount <= 1000:
             alpha_allmodels = 0.3
-        elif 1000 < modelcount <= 2000:
+        if 1000 < modelcount <= 2000:
             alpha_allmodels = 0.1
-        elif 2000 < modelcount:
+        if 2000 < modelcount:
             alpha_allmodels = 0.05
     
     for geom in geometries_selection:
@@ -159,8 +158,6 @@ def plot_fit(bestfits_source, geometries_selection, filepath, chi2limit, mass_ul
 
         model_dir = f'{robitaille_modeldir}/{geom}'
         sedcube = SEDCube.read(f"{model_dir}/flux.fits",)
-
-
 
         index = np.nanargmin(fitinfo.chi2)
 

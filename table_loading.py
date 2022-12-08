@@ -13,6 +13,7 @@ from astropy.stats import sigma_clipped_stats
 from astropy import wcs
 from astropy.wcs import WCS
 
+
 from astropy.table import QTable
 from astropy.modeling.models import BlackBody
 
@@ -304,7 +305,7 @@ sed_filters, wavelength_dict, filternames, zpts = get_filters()
 
 def get_fitter(geometry='s-ubhmi', aperture_size=3*u.arcsec,
                distance_range=[1.8, 2.2]*u.kpc,
-               robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2',
+               robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2/',
                filters=filternames, extinction=make_extinction(),
                av_range=[4,40]):
 
@@ -331,7 +332,7 @@ def get_fitter(geometry='s-ubhmi', aperture_size=3*u.arcsec,
     return fitter
 
 def fit_a_source(data, error, valid, geometry='s-ubhmi',
-                 robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2',
+                 robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2/',
                  extinction=make_extinction(), filters=filternames,
                  aperture_size=3*u.arcsec, distance_range=[1.8, 2.2]*u.kpc,
                  av_range=[4,40],
@@ -658,3 +659,5 @@ if __name__ == "__main__":
 
     os.chdir('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF')
     tbl.write('SPICY_withAddOns.fits', overwrite=True)
+    
+    

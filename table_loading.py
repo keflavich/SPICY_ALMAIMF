@@ -1,4 +1,6 @@
 import numpy as np
+import pylab as pl
+import time
 
 from astropy.io import fits
 from astropy.table import Table
@@ -11,12 +13,17 @@ from astropy.stats import sigma_clipped_stats
 from astropy import wcs
 from astropy.wcs import WCS
 
+
+from astropy.table import QTable
+from astropy.modeling.models import BlackBody
+
 from astroquery.vizier import Vizier
 from astroquery.svo_fps import SvoFps
 
 import photutils
 
-import tqdm
+from tqdm import tqdm
+from tqdm.notebook import tqdm_notebook
 
 from spectral_cube import SpectralCube
 import os
@@ -79,17 +86,38 @@ def add_VVV_matches(tbl):
                                                            catalog='II/364/virac')[0]
     virac_match.rename_column('srcid','VIRAC')
 
-    mskvirac = tbl['VIRAC'].mask
+    mskvirac = tbl['VIRAC'].mask.flatten().tolist()
     tbl['VIRAC'].mask = False
     tbl['VIRAC'][mskvirac] = -99999
     rslt = table.join(tbl, virac_match, join_type='left', keys='VIRAC')
+    rslt.sort('SPICY')
     rslt['VIRAC'].mask = mskvirac
+    
     return rslt
 
+def add_UKIDSS_matches(tbl):
+    tbl['UKIDSS'] = table.MaskedColumn(tbl['UKIDSS'])
+    mskukidss = [tbl['UKIDSS'] == '                   ']
+    tbl['UKIDSS'][mskukidss] = np.ma.masked
+    tbl['UKIDSS'][mskukidss].mask = [mskukidss]
 
-def find_ALMAIMF_matches(tbl):
+    ukidss_numbers = tbl['UKIDSS']
+    row_limit = len(tbl)
+    # VIRAC uses numbers, not IDs, so we can just do comma-separated
+    ukidss_match = Vizier(row_limit=row_limit).query_constraints(srcid=",".join(map(str, ukidss_numbers[~ukidss_numbers.mask])),
+                                                           catalog='II/316/gps6')[0]
+    ukidss_match.rename_column('UGPS','UKIDSS')
+
+    mskukidss = tbl['UKIDSS'].mask
+    tbl['UKIDSS'].mask = False
+    tbl['UKIDSS'][mskukidss] = -99999
+    rslt = table.join(tbl, ukidss_match, join_type='left', keys='UKIDSS')
+    rslt['UKIDSS'].mask = mskukidss
+    return rslt
+
+def find_ALMAIMF_matches(tbl, coords):
     # determine number of SPICY sources in each ALMA FOV
-    os.chdir('/orange/adamginsburg/ALMA_IMF/May2021Release/')
+    os.chdir('/orange/adamginsburg/web/secure/ALMA-IMF/May2021Release/')
 
     prefixes['W43MM1'] = dict(
         finaliter_prefix_b3="W43-MM1/B3/cleanest/W43-MM1_B3_uid___A001_X1296_X1af_continuum_merged_12M_robust0_selfcal4_finaliter",
@@ -111,9 +139,14 @@ def find_ALMAIMF_matches(tbl):
     return tbl
 
 
-def show_source_on_spitzer(fieldid, coords,
+def show_source_on_spitzer(fieldid, coords, source=None,
                            basepath='/orange/adamginsburg/ALMA_IMF/2017.1.01355.L/RestructuredImagingResults',
                            mips=False):
+    
+    tbl, coords = get_spicy_tbl()
+    tbl = find_ALMAIMF_matches(tbl, coords)
+    # tbl = Table.read('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF/SPICY_withAddOns.fits')
+    
     pfxs = prefixes[fieldid]
     fig = show_fov_on_spitzer(**{key: f'{basepath}/{val}' for key,val in pfxs.items()},
                               fieldid=fieldid, spitzerpath=f'{basepath}/spitzer_datapath',
@@ -124,31 +157,66 @@ def show_source_on_spitzer(fieldid, coords,
     ww = cube.wcs.celestial
     ww._naxis = cube.shape[1:]
     matches = ww.footprint_contains(coords)
-
+    
     cc = coords[matches]
-
     ax = fig.gca()
-    ax.plot(cc.fk5.ra.deg, cc.fk5.dec.deg, 'wo', mfc='none', mec='w', markersize=10, transform=ax.get_transform('fk5'), )
+    
+    tbl = tbl[matches]
+    #tbl = tbl[tbl['ALMAIMF_FIELDID'] == fieldid]
+    
+    try:
+        if source == None:
+            ax.plot(cc[0:len(cc)].fk5.ra.deg, cc[0:len(cc)].fk5.dec.deg, 'w*',
+                    mfc='none', mec='w', markersize=17, transform=ax.get_transform('fk5'), )
+        elif len(tbl) == 1:
+            ax.plot(cc.fk5.ra.deg, cc.fk5.dec.deg, 'w*',
+                    mfc='none', mec='w', markersize=17, transform=ax.get_transform('fk5'), )
+        else:
+            tbl.add_index('SPICY')
+            tbl.sort('SPICY')
+            rownum = tbl.loc_indices[source]
+            ax.plot(cc[rownum:rownum+1].fk5.ra.deg, cc[rownum:rownum+1].fk5.dec.deg, 'w*',
+                    mfc='none', mec='w', markersize=17, transform=ax.get_transform('fk5'), )
+        
+    except AttributeError:
+        print("Failed")
+    
+    return fig
 
-
-
-
-def get_filters():
+def get_filters(hemisphere='south'):
     # these are the official filternames on SVO_FPS
-    filternames = ['Paranal/VISTA.Y', 'Paranal/VISTA.Z', 'Paranal/VISTA.J', 'Paranal/VISTA.H', 'Paranal/VISTA.Ks',
+    if hemisphere == 'north':
+        filternames = ['UKIRT/UKIDSS.J', 'UKIRT/UKIDSS.H', 'UKIRT/UKIDSS.K',
                    'Spitzer/IRAC.I1', 'Spitzer/IRAC.I2', 'Spitzer/IRAC.I3', 'Spitzer/IRAC.I4', 'Spitzer/MIPS.24mu',
                    'Herschel/Pacs.blue', 'Herschel/Pacs.red', 'Herschel/SPIRE.PSW', 'Herschel/SPIRE.PMW', 'Herschel/SPIRE.PLW'
                   ]
-    # keep only the non "_ext" SPIRE filters (but we should look up which is more appropriate)
-    spire_filters = SvoFps.get_filter_list(facility='Herschel', instrument='Spire')
-    spire_filters = spire_filters[['_ext' not in fid for fid in spire_filters['filterID']]]
-
-    filter_meta = table.vstack([SvoFps.get_filter_list(facility='Paranal', instrument='VIRCAM'),
+        # keep only the non "_ext" SPIRE filters (but we should look up which is more appropriate)
+        spire_filters = SvoFps.get_filter_list(facility='Herschel', instrument='Spire')
+        spire_filters = spire_filters[['_ext' not in fid for fid in spire_filters['filterID']]]
+        
+        filter_meta = table.vstack([SvoFps.get_filter_list(facility='UKIRT', instrument='WFCAM'),
                                 SvoFps.get_filter_list(facility='Spitzer', instrument='IRAC'),
                                 SvoFps.get_filter_list(facility='Spitzer', instrument='MIPS')[0],
                                 SvoFps.get_filter_list(facility='Herschel', instrument='Pacs'),
                                 spire_filters,
                                ])
+        
+    elif hemisphere == 'south':
+        filternames = ['Paranal/VISTA.Y', 'Paranal/VISTA.Z', 'Paranal/VISTA.J', 'Paranal/VISTA.H', 'Paranal/VISTA.Ks',
+                   'Spitzer/IRAC.I1', 'Spitzer/IRAC.I2', 'Spitzer/IRAC.I3', 'Spitzer/IRAC.I4', 'Spitzer/MIPS.24mu',
+                   'Herschel/Pacs.blue', 'Herschel/Pacs.red', 'Herschel/SPIRE.PSW', 'Herschel/SPIRE.PMW', 'Herschel/SPIRE.PLW'
+                  ]
+        # keep only the non "_ext" SPIRE filters (but we should look up which is more appropriate)
+        spire_filters = SvoFps.get_filter_list(facility='Herschel', instrument='Spire')
+        spire_filters = spire_filters[['_ext' not in fid for fid in spire_filters['filterID']]]
+        
+        filter_meta = table.vstack([SvoFps.get_filter_list(facility='Paranal', instrument='VIRCAM'),
+                                SvoFps.get_filter_list(facility='Spitzer', instrument='IRAC'),
+                                SvoFps.get_filter_list(facility='Spitzer', instrument='MIPS')[0],
+                                SvoFps.get_filter_list(facility='Herschel', instrument='Pacs'),
+                                spire_filters,
+                               ])
+
     zpts = {filtername: filter_meta[filter_meta['filterID']==filtername]['ZeroPoint'] for filtername in filternames}
 
     filtercurves = {filtername: SvoFps.get_transmission_data(filtername) for filtername in filternames}
@@ -235,13 +303,11 @@ def make_extinction():
 
     return extinction
 
-
 sed_filters, wavelength_dict, filternames, zpts = get_filters()
-
 
 def get_fitter(geometry='s-ubhmi', aperture_size=3*u.arcsec,
                distance_range=[1.8, 2.2]*u.kpc,
-               robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
+               robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2',
                filters=filternames, extinction=make_extinction(),
                av_range=[4,40]):
 
@@ -262,16 +328,18 @@ def get_fitter(geometry='s-ubhmi', aperture_size=3*u.arcsec,
                     extinction_law=extinction,
                     distance_range=distance_range,
                     av_range=av_range,
+                    use_memmap=True
                    )
 
     return fitter
 
 def fit_a_source(data, error, valid, geometry='s-ubhmi',
-                 robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
+                 robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2',
                  extinction=make_extinction(), filters=filternames,
                  aperture_size=3*u.arcsec, distance_range=[1.8, 2.2]*u.kpc,
                  av_range=[4,40],
                  fitter=None,
+                 stash_to_mmap=False,
                 ):
 
     source = Source()
@@ -293,6 +361,17 @@ def fit_a_source(data, error, valid, geometry='s-ubhmi',
     # Run the fitting
     fitinfo = fitter.fit(source)
 
+    if stash_to_mmap:
+        from tempfile import mkdtemp
+        import os.path as path
+        filename = path.join(mkdtemp(), f'{geometry}.dat')
+        fp = np.memmap(filename, dtype='float32', mode='w+', shape=fitinfo.model_fluxes.shape)
+        fp[:] = fitinfo.model_fluxes[:]
+        fp.flush()
+        fitinfo.model_fluxes = fp
+        print(f"Moved array with size {fitinfo.model_fluxes.shape} to {fp.filename}")
+
+
     return fitinfo
 
 magcols = ['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0']
@@ -306,13 +385,15 @@ def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
     for colname, errcolname, zpn in zip(magcols, emagcols, filternames):
         print(colname, zpn)
         zp = u.Quantity(zpts[zpn], u.Jy)
-        data = tbl[colname].value
-        if hasattr(tbl[colname], 'mask'):
-            tbl[zpn+"_flux"] = flx = np.ma.masked_where(tbl[colname].mask, (zp * 10**(data/-2.5)).to(u.mJy))
-        else:
-            tbl[zpn+"_flux"] = flx = (zp * 10**(data/-2.5)).to(u.mJy)
-        err = tbl[errcolname] / (1.09*u.mag) * flx
-        tbl[zpn+"_eflux"] = err
+        if colname in tbl.keys():
+            data = tbl[colname].value
+            if hasattr(tbl[colname], 'mask'):
+                tbl[zpn+"_flux"] = flx = np.ma.masked_where(tbl[colname].mask, (zp * 10**(data/-2.5)).to(u.mJy))
+            else:
+                tbl[zpn+"_flux"] = flx = (zp * 10**(data/-2.5)).to(u.mJy)
+            err = tbl[errcolname] / (1.09*u.mag) * flx
+            tbl[zpn+"_eflux"] = err
+        else: print(f'{colname} not found.')
 
     return tbl
 
@@ -349,6 +430,11 @@ apertures_ALMA = {'3mm': 3*u.arcsec,
 
 
 def get_data_to_fit(rownumber, tbl, filters=filternames):
+    
+    for key in filters:
+        if key+"_flux" not in tbl.keys():
+            tbl[key+"_flux"] = [np.nan for row in tbl]
+            tbl[key+"_eflux"] = [np.nan for row in tbl]
 
     flx = getrow(tbl, rownumber, keys=[key+"_flux" for key in filters])
     error = getrow(tbl, rownumber, keys=[key+"_eflux" for key in filters])
@@ -363,12 +449,16 @@ def get_data_to_fit(rownumber, tbl, filters=filternames):
 
     # data to treat as upper limits: the flux is not specified, but the error is
     valid[(~np.isfinite(flx) & np.isfinite(error))] = 3
+    
+    # toss any data points with exactly-0 values
+    valid[flx == 0] = 0
+    valid[error == 0] = 0
 
     # set the "flux" to be the 3-sigma error wherever we're treating it as an upper limit
     flx[valid == 3] = error[valid == 3] * 3
     # then, set the confidence associated with that upper limit
     error[valid == 3] = 0.997 # 0.997 is (approximately) 3-sigma
-
+    
     return flx, error, valid
 
 
@@ -419,7 +509,7 @@ def add_alma_photometry(tbl, aperture_radius=3*u.arcsec,
         phot['significant'] = phot['flux'] > 3 * alma_rms*u.beam
 
         tbl[f'ALMA-IMF_{wlname}_flux'][match] = np.where(phot['significant'], phot['flux'], np.nan)
-        tbl[f'ALMA-IMF_{wlname}_eflux'][match] = alma_rms
+        tbl[f'ALMA-IMF_{wlname}_eflux'][match] = np.where(np.isfinite(phot['flux']), alma_rms, np.nan)
 
     return tbl
 
@@ -434,7 +524,7 @@ def get_flx(crd, data, ww):
 
 def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orange/adamginsburg/higal/'):
     rows = []
-    for crd in tqdm.tqdm(coords.galactic):
+    for crd in tqdm(coords.galactic):
         galrnd = int(crd.galactic.l.deg)
         flx = {wl: np.nan for wl in wls}
         # search +/- 2 deg:
@@ -452,7 +542,7 @@ def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orang
                     if flx_[70] != 0:
                         flx[70] = flx_[70]
                         flx[160] = flx_[160]
-                    if not np.isnan(flx_[250]):
+                    if 250 in flx_ and not np.isnan(flx_[250]):
                         flx[250] = flx_[250]
                         flx[350] = flx_[350]
                         flx[500] = flx_[500]
@@ -500,7 +590,7 @@ def add_mips_limits(tbl, coords, mipspath='/orange/adamginsburg/spitzer/mips/'):
     debug_counter = 0
 
     rows = []
-    for crd in tqdm.tqdm(coords.galactic):
+    for crd in tqdm(coords.galactic):
         match = False
         for fn, ww in footprints.items():
             if ww.footprint_contains(crd):

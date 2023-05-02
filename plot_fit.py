@@ -14,21 +14,21 @@ from astropy.modeling.models import BlackBody
 import table_loading
 
 def find_mass_ul(tbl, row_num, regiondistance):
-    if not np.isnan(tbl[row_num]['ALMA-IMF_1mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_flux']): 
+    if not np.isnan(tbl[row_num]['ALMA-IMF_1mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_flux']):
         alma_detect = tbl[row_num]['ALMA-IMF_1mm_flux']
         mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_flux']): 
+    elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_flux']):
         alma_detect = tbl[row_num]['ALMA-IMF_3mm_flux']
         mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(tbl[row_num]['ALMA-IMF_1mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_eflux']): 
+    elif not np.isnan(tbl[row_num]['ALMA-IMF_1mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_eflux']):
         alma_detect = tbl[row_num]['ALMA-IMF_1mm_eflux']
         mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_eflux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_3mm_eflux']         
+    elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_eflux']):
+        alma_detect = tbl[row_num]['ALMA-IMF_3mm_eflux']
         mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
-        
+
     #230 for 1mm, 100 for 3mm
-    
+
     return(mass_ul)
 
 
@@ -86,8 +86,8 @@ def binsfunction(param, kind, binsnum, chi2limit, geometries, bestfits, massnum=
         binsmin = min(datamin)
         binsmax = max(datamax)
         bins = np.geomspace(binsmin, binsmax, binsnum)
-        
-        
+
+
     if np.any(np.isnan(bins)):
         raise ValueError('found a nan')
 
@@ -98,7 +98,7 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fie
              filepath='/blue/adamginsbug/adamginsburg/SPICY_ALMAIMF/',
              extinction=table_loading.make_extinction(),
              show_per_aperture=True, default_aperture=3000*u.au,
-             robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models/',
+             robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2/',
              show_all_models=False, alpha_allmodels=None, verbose=True,
              min_chi2=None,
             ):
@@ -132,7 +132,7 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fie
 
     # preserve this parameter before loop
     recalc_min_chi2 = min_chi2 is None
-    
+
     # store colors per geometry
     colors = {}
 
@@ -149,7 +149,7 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fie
             alpha_allmodels = 0.1
         elif 2000 < modelcount:
             alpha_allmodels = 0.05
-    
+
     for geom in geometries_selection:
 
         fitinfo = bestfits_source[geom]
@@ -178,7 +178,7 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fie
         line, = ax0.plot(sedcube.wav,
                  sed.flux[apnum] * distance_scale * av_scale,
                  label=geom, alpha=0.9)
-        
+
         colors[geom] = line.get_color()
 
 
@@ -208,13 +208,13 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fie
             av_scale_conv = 10**((fitinfo.av[index] * extinction.get_av(wavelengths)))
             flux = flux * distance_scale * av_scale_conv
             ax0.scatter(wavelengths, flux, marker='s', s=apertures.value, c=line.get_color())
-    
+
     ax0.errorbar(wavelengths.value[valid==1], source.flux[valid==1], yerr=source.error[valid==1], linestyle='none', color='w', marker='o', markersize=10)
     ax0.plot(wavelengths.value[valid==3], source.flux[valid==3], linestyle='none', color='w', marker='v', markersize=10)
-    
+
     if recalc_min_chi2:
         min_chi2 = None
-            
+
     ax0.loglog()
     ax0.set_xlabel('Wavelength (microns)')
     ax0.set_ylabel("Flux (mJy)")
@@ -282,14 +282,17 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fie
             ax4.hist(data['Line-of-Sight Masses'][:,apnum], bins=losbins, alpha=histalpha, label=geom, color=colors[geom])
             if mass_ul is not None:
                 ax4.axvline(mass_ul, color='r', linestyle='dashed', linewidth=3)
-            
+
         if 'disk.mass' in pars.keys():
             ax5.hist(data['disk.mass'], bins=dscbins, alpha=histalpha, label=geom, color=colors[geom])
             if mass_ul is not None:
                 ax5.axvline(mass_ul, color='r', linestyle='dashed', linewidth=3)
 
         if 'Sphere Masses' in pars.keys():
-            ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom, color=colors[geom])
+            try:
+                ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom, color=colors[geom])
+            except Exception as ex:
+                print("Failure on sphere mass histogram: ",ex)
             if mass_ul is not None:
                 ax6.axvline(mass_ul, color='r', linestyle='dashed', linewidth=3)
 
@@ -299,7 +302,7 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fie
         ax7.hist(distances[selection], bins=np.linspace(distances[selection].min(), distances[selection].max()), color=colors[geom])
 
         ax8.hist(fitinfo.av[selection], bins=np.linspace(np.nanmin(fitinfo.av[selection]), np.nanmax(fitinfo.av[selection])), color=colors[geom])
-    
+
     handles, labels = ax1.get_legend_handles_labels()
     ax0.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.16,1.02))
     ax1.set_xlabel("Stellar Temperature (K)")
@@ -332,5 +335,5 @@ def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fie
         ax9.axis('off')
     elif verbose:
         print(f"Figure {figpath} doesn't exist")
-        
+
     return basefig

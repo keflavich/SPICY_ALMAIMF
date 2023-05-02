@@ -2,13 +2,14 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.gridspec import GridSpec
-import matplotlib.image as mpimg
 
 from astropy import units as u
 import sedfitter
 from sedfitter.sed import SEDCube
 from astropy.table import Table
+import os
 
+import matplotlib.image as mpimg
 import table_loading
 
 def datafunction(geom, deltachi2lim, bestfits):
@@ -70,7 +71,8 @@ def binsfunction(param, kind, binsnum, deltachi2lim, geometries, bestfits, massn
     return bins
 
 def plot_fit(bestfits_source, geometries_selection,
-        deltachi2limit, chi2limit, fieldid, spicyid, ylimplot=3e7,
+        deltachi2limit, fieldid, spicyid,
+        figurepath=os.path.expanduser('~/figures'),
         extinction=table_loading.make_extinction(),
         show_per_aperture=True,
         default_aperture=3*u.arcsec,
@@ -78,7 +80,17 @@ def plot_fit(bestfits_source, geometries_selection,
         show_all_models=False,
              alpha_allmodels=0.1,
             ):
-
+    
+    """
+    Parameters
+    ----------
+    fieldid : string
+         'G328' (ex. - whatever your region is)
+    spicyid : number
+         31415 (ex. - whatever source you're looking at)
+    name : string
+         'btingle' (ex. - however your name appears in your directory, aka /home/yourname)
+    """
     # Setting up the plot surface
     basefig = plt.figure(figsize=(20, 22))
     gs = GridSpec(nrows=6, ncols=2, height_ratios=[4,1,1,1,1,1], hspace=0.25, wspace=0.1)
@@ -254,14 +266,12 @@ def plot_fit(bestfits_source, geometries_selection,
     # --------------------------------
 
     # reading the saved image of the region with source location marked
-    locfig = mpimg.imread(f'/home/btingle/figures/{fieldid}_{spicyid}.png')
-
-    # my image needs to be flipped
+    locfig = mpimg.imread(f'/home/{name}/figures/{fieldid}_{spicyid}.png')
     locfig = np.flipud(locfig)
 
     ax9 = basefig.add_subplot(gs[0, 0])
     ax9.imshow(locfig)
-    ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid}  | [{chi2limit}]\n', fontsize=25)
+    ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid}\n', fontsize=25)
     ttl.set_position([.5, 1])
     #ax9.axis([90,630,90,630])
     ax9.axis([170,550,170,550])

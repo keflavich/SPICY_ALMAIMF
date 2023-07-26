@@ -70,7 +70,7 @@ geometries = ['s-pbhmi', 's-pbsmi',
 
 def get_spicy_tbl():
     # retrieve the SPICY catalog
-    tbl = Table.read('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF/table1.fits') # !filepath!
+    tbl = Table.read('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF/table1.fits')
         #alternatively: tbl = Table.read('https://sites.astro.caltech.edu/~mkuhn/SPICY/table1.fits')
     coords = SkyCoord(tbl['l'], tbl['b'], frame='galactic', unit=(u.deg, u.deg))
     return tbl,coords

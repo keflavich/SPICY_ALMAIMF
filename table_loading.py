@@ -1,56 +1,72 @@
+# basics
+import os
 import numpy as np
 import pylab as pl
+import glob
 import time
 
+# utility
+from tqdm import tqdm
+from tqdm.notebook import tqdm_notebook
+
+# astropy
 from astropy.io import fits
 from astropy.table import Table
+from astropy.table import vstack
 from astropy import table
-
 from astropy import coordinates
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.stats import sigma_clipped_stats
 from astropy import wcs
 from astropy.wcs import WCS
-
-
 from astropy.table import QTable
 from astropy.modeling.models import BlackBody
 
+# astroquery
 from astroquery.vizier import Vizier
+from astroquery.ukidss import Ukidss
 from astroquery.svo_fps import SvoFps
 
-import photutils
-
-from tqdm import tqdm
-from tqdm.notebook import tqdm_notebook
-
-from spectral_cube import SpectralCube
-import os
-import glob
-
-# load up ALMA-IMF metadata
+# photutils; load up ALMA-IMF metadata
 import sys
+import photutils
 sys.path.append('/orange/adamginsburg/ALMA_IMF/reduction/analysis/')
 from spectralindex import prefixes
+from spectral_cube import SpectralCube
+
+# spitzer plots
 import spitzer_plots
 from spitzer_plots import show_fov_on_spitzer, contour_levels, get_spitzer_data
 
+# SED fitting
 from sedfitter import fit, Fitter
 from sedfitter.filter import Filter
 from sedfitter.extinction import Extinction
 from sedfitter.source import Source
+from sedfitter.sed import SEDCube
 
+# extinction
 from dust_extinction.parameter_averages import F19
 from dust_extinction.averages import CT06_MWLoc
 
+# writing to file
+import pickle
 
-geometries = ['s-pbhmi', 's-pbsmi', 'sp--h-i', 's-p-hmi', 'sp--hmi', 'sp--s-i', 's-p-smi', 'sp--smi', 'spubhmi', 'spubsmi', 'spu-hmi', 'spu-smi', 's---s-i', 's---smi', 's-ubhmi', 's-ubsmi', 's-u-hmi', 's-u-smi']
+# convenience-sorting of fields based on which NIR observations they have
+ukidss_fields = ['G10','G12','W43MM1','W43MM2','W43MM3','W51-E','W51IRS2']
+virac_fields = ['G008','G327','G328','G333','G337','G338','G351','G353']
 
-
-# s-pbhmi  s-pbsmi  sp--h-i  s-p-hmi  sp--hmi  sp--s-i  s-p-smi  sp--smi  spubhmi  spubsmi  spu-hmi  spu-smi  s---s-i  s---smi  s-ubhmi  s-ubsmi  s-u-hmi  s-u-smi
-
-              
+# define geometries, per Robitaille paper
+geometries = ['s-pbhmi', 's-pbsmi',
+              'sp--h-i', 's-p-hmi', 
+              'sp--hmi', 'sp--s-i', 
+              's-p-smi', 'sp--smi', 
+              'spubhmi', 'spubsmi', 
+              'spu-hmi', 'spu-smi', 
+              's---s-i', 's---smi', 
+              's-ubhmi', 's-ubsmi', 
+              's-u-hmi', 's-u-smi']
 
 def get_spicy_tbl():
     tbl = Table.read('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF/table1.fits')

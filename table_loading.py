@@ -69,11 +69,10 @@ geometries = ['s-pbhmi', 's-pbsmi',
               's-u-hmi', 's-u-smi']
 
 def get_spicy_tbl():
-    tbl = Table.read('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF/table1.fits')
-    #tbl = Table.read('https://sites.astro.caltech.edu/~mkuhn/SPICY/table1.fits')
-
+    # retrieve the SPICY catalog
+    tbl = Table.read('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF/table1.fits') # !filepath!
+        #alternatively: tbl = Table.read('https://sites.astro.caltech.edu/~mkuhn/SPICY/table1.fits')
     coords = SkyCoord(tbl['l'], tbl['b'], frame='galactic', unit=(u.deg, u.deg))
-
     return tbl,coords
 
 def add_MIPS_matches(tbl):
@@ -133,17 +132,17 @@ def add_UKIDSS_matches(tbl):
 
 def find_ALMAIMF_matches(tbl, coords):
     # determine number of SPICY sources in each ALMA FOV
-    os.chdir('/orange/adamginsburg/web/secure/ALMA-IMF/May2021Release/')
+    os.chdir('/orange/adamginsburg/web/secure/ALMA-IMF/May2021Release/') # !filepath!
 
     prefixes['W43MM1'] = dict(
         finaliter_prefix_b3="W43-MM1/B3/cleanest/W43-MM1_B3_uid___A001_X1296_X1af_continuum_merged_12M_robust0_selfcal4_finaliter",
-        finaliter_prefix_b6="W43-MM2/B6/cleanest/W43-MM2_B6_uid___A001_X1296_X113_continuum_merged_12M_robust0_selfcal5_finaliter",)
+        finaliter_prefix_b6="W43-MM2/B6/cleanest/W43-MM2_B6_uid___A001_X1296_X113_continuum_merged_12M_robust0_selfcal5_finaliter",) # !filepath!
 
     all_matches = np.zeros(len(tbl), dtype='bool')
     fieldids = np.empty(len(tbl), dtype='S8')
 
     for fieldid, pfxs in prefixes.items():
-        cube = SpectralCube.read(pfxs['finaliter_prefix_b3']+".image.tt0.fits", format='fits', use_dask=False).minimal_subcube()
+        cube = SpectralCube.read(pfxs['finaliter_prefix_b3']+".image.tt0.fits", format='fits', use_dask=False).minimal_subcube() # !filepath!
         ww = cube.wcs.celestial
         ww._naxis = cube.shape[1:]
         matches = ww.footprint_contains(coords)
@@ -153,7 +152,6 @@ def find_ALMAIMF_matches(tbl, coords):
     tbl['in_ALMAIMF'] = all_matches
     tbl['ALMAIMF_FIELDID'] = fieldids
     return tbl
-
 
 def show_source_on_spitzer(fieldid, coords, source=None,
                            basepath='/orange/adamginsburg/ALMA_IMF/2017.1.01355.L/RestructuredImagingResults',

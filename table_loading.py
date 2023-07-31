@@ -132,17 +132,17 @@ def add_UKIDSS_matches(tbl):
 
 def find_ALMAIMF_matches(tbl, coords):
     # determine number of SPICY sources in each ALMA FOV
-    os.chdir('/orange/adamginsburg/web/secure/ALMA-IMF/May2021Release/') # !filepath!
+    os.chdir('/orange/adamginsburg/web/secure/ALMA-IMF/May2021Release/')
 
     prefixes['W43MM1'] = dict(
         finaliter_prefix_b3="W43-MM1/B3/cleanest/W43-MM1_B3_uid___A001_X1296_X1af_continuum_merged_12M_robust0_selfcal4_finaliter",
-        finaliter_prefix_b6="W43-MM2/B6/cleanest/W43-MM2_B6_uid___A001_X1296_X113_continuum_merged_12M_robust0_selfcal5_finaliter",) # !filepath!
+        finaliter_prefix_b6="W43-MM2/B6/cleanest/W43-MM2_B6_uid___A001_X1296_X113_continuum_merged_12M_robust0_selfcal5_finaliter",)
 
     all_matches = np.zeros(len(tbl), dtype='bool')
     fieldids = np.empty(len(tbl), dtype='S8')
 
     for fieldid, pfxs in prefixes.items():
-        cube = SpectralCube.read(pfxs['finaliter_prefix_b3']+".image.tt0.fits", format='fits', use_dask=False).minimal_subcube() # !filepath!
+        cube = SpectralCube.read(pfxs['finaliter_prefix_b3']+".image.tt0.fits", format='fits', use_dask=False).minimal_subcube()
         ww = cube.wcs.celestial
         ww._naxis = cube.shape[1:]
         matches = ww.footprint_contains(coords)
@@ -536,7 +536,6 @@ def add_alma_photometry(tbl, aperture_radius=3*u.arcsec,
 
     return tbl
 
-
 def get_flx(crd, data, ww):
     crd = crd.transform_to(ww.wcs.radesys.lower())
     xpix, ypix = ww.world_to_pixel(crd)
@@ -602,23 +601,6 @@ def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orang
     for name, data in columns.items():
         tbl.add_column(table.Column(name=name, data=data, unit=units[name]))
     return tbl
-
-#def add_mips_limits(tbl, coords):
-#
-#    m24_flux = []
-#    for crd in tqdm.tqdm(coords):
-#        spitzer_files = get_spitzer_data(crd.fk5, 3*u.arcmin)
-#        mg = spitzer_files['MG'][0]
-#        ww = wcs.WCS(mg.header)
-#        flx = get_flx(crd, mg.data, ww)
-#        m24_flux.append(flx)
-#
-#    bunit = mg.header['BUNIT']
-#
-#    tbl.add_column(table.Column(name='M24_flux', data=m24_flux, unit=bunit))
-#
-#    return tbl
-#
 
 def add_mips_limits(tbl, coords, mipspath='/orange/adamginsburg/spitzer/mips/'):
 

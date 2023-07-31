@@ -391,26 +391,35 @@ def fit_a_source(data, error, valid, geometry='s-ubhmi',
 magcols = ['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0']
 emagcols = ['Yell', 'Zell', 'Jell', 'Hell', 'KsEll','e_mag3_6', 'e_mag4_5', 'e_mag5_8', 'e_mag8_0']
 
-
 def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
- 
-    # convert magnitudes to fluxes now
+    # convert magnitudes to fluxes
     # (it's a pain to try to deal with a mix of magnitudes & fluxes)
     for colname, errcolname, zpn in zip(magcols, emagcols, filternames):
-        print(colname, zpn)
         zp = u.Quantity(zpts[zpn], u.Jy)
-        if colname in tbl.keys():
-            data = tbl[colname].value
+        # iterate through each colname
+        if colname and errcolname in tbl.keys():
+            #grab numerical value for the data; masked should be nan
+            data = tbl[colname]
+            error = tbl[errcolname]
+            print(colname)
             if hasattr(tbl[colname], 'mask'):
-                tbl[zpn+"_flux"] = flx = np.ma.masked_where(tbl[colname].mask, (zp * 10**(data/-2.5)).to(u.mJy))
+                tbl[zpn+"_flux"] = flx = np.ma.masked_where(tbl[colname].mask, (zp * 10**(data.data/-2.5)).to(u.mJy))
             else:
-                tbl[zpn+"_flux"] = flx = (zp * 10**(data/-2.5)).to(u.mJy)
-            err = tbl[errcolname] / (1.09*u.mag) * flx
-            tbl[zpn+"_eflux"] = err
+                tbl[zpn+"_flux"] = flx = (zp * 10**(data.data/-2.5)).to(u.mJy)
+                
+            if hasattr(tbl[errcolname], 'mask') and hasattr(tbl[colname], 'mask'):
+                tbl[zpn+"_eflux"] = err = np.ma.masked_where(tbl[errcolname].mask, np.where(tbl[colname].mask, (zp * 10**(error.data/-2.5)).to(u.mJy), error.quantity / (1.09*u.mag) * flx.data))
+            elif not hasattr(tbl[errcolname], 'mask') and hasattr(tbl[colname], 'mask'):
+                tbl[zpn+"_eflux"] = err = np.where(tbl[colname].mask, (zp * 10**(error.data/-2.5)).to(u.mJy), error.quantity / (1.09*u.mag) * flx.data)
+            else:
+                tbl[zpn+"_eflux"] = err = error.quantity / (1.09*u.mag) * flx.data
+            tbl[zpn+"_flux"].unit = 'mJy'
+            tbl[zpn+"_eflux"].unit = 'mJy'
+            #err = tbl[errcolname] / (1.09*u.mag) * flx
+            #tbl[zpn+"_eflux"] = err
         else: print(f'{colname} not found.')
-
+        
     return tbl
-
 
 # hacky function to extract the rows of an SED table as a plottable entry
 def getrow(tb, rownum, keys=['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0', 'S24', '70', '160', '250', '350', '500', 'ALMA-IMF_1mm_flux', 'ALMA-IMF_3mm_flux']):

@@ -544,6 +544,20 @@ def get_flx(crd, data, ww):
     ypix = int(np.round(ypix))
     return data[ypix, xpix]
 
+def add_spicylimits(tbl, spicyupperlims = {"3_6": 14.9,
+                  "4_5": 13.7,
+                  "5_8": 12.9,
+                  "8_0": 12.2,}):
+    for key in spicyupperlims.keys():
+        if f'mag{key}' and f'e_mag{key}' in tbl.keys():
+            tbl[f'e_mag{key}'] = table.MaskedColumn(tbl[f'e_mag{key}'])
+            tbl[f'e_mag{key}'].fill_value = spicyupperlims[key]
+            try:
+                tbl[f'e_mag{key}'] = tbl[f'e_mag{key}'].filled()
+            except AttributeError:
+                print(f"Column {key} has no masked values")
+        else: print(f'{key} band not found.')
+    return tbl
 
 def add_herschel_limits(tbl, coords, wls=[70,160,250,350,500], higalpath='/orange/adamginsburg/higal/'):
     rows = []

@@ -397,7 +397,7 @@ def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
     for colname, errcolname, zpn in zip(magcols, emagcols, filternames):
         zp = u.Quantity(zpts[zpn], u.Jy)
         # iterate through each colname
-        if colname and errcolname in tbl.keys():
+        if colname in tbl.keys() and errcolname in tbl.keys():
             #grab numerical value for the data; masked should be nan
             data = tbl[colname]
             error = tbl[errcolname]

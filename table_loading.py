@@ -110,25 +110,51 @@ def add_VVV_matches(tbl):
     
     return rslt
 
+def add_VVV_limits(tbl, limits={"Y": 17,
+                  "Z": 17.5,
+                  "J": 16.5,
+                  "H": 16,
+                  "Ks": 15.5,}):
+
+    for key in limits.keys():
+        if f'{key}mag' and f'{key}ell' in tbl.keys():
+            tbl[f'{key}ell'].fill_value = limits[key]
+            tbl[f'{key}ell'][tbl['NIR data'] == "VIRAC"] = tbl[f'{key}ell'][tbl['NIR data'] == "VIRAC"].filled()
+        else: print(f'{key} band not found.')
+        
+    return tbl
+
 def add_UKIDSS_matches(tbl):
-    tbl['UKIDSS'] = table.MaskedColumn(tbl['UKIDSS'])
-    mskukidss = [tbl['UKIDSS'] == '                   ']
-    tbl['UKIDSS'][mskukidss] = np.ma.masked
-    tbl['UKIDSS'][mskukidss].mask = [mskukidss]
-
-    ukidss_numbers = tbl['UKIDSS']
+    mskukidss = tbl['NIR data'] == "UKIDSS"
     row_limit = len(tbl)
-    # VIRAC uses numbers, not IDs, so we can just do comma-separated
-    ukidss_match = Vizier(row_limit=row_limit).query_constraints(srcid=",".join(map(str, ukidss_numbers[~ukidss_numbers.mask])),
-                                                           catalog='II/316/gps6')[0]
+    
+    ukidss_match = Vizier(row_limit=row_limit).query_constraints(UGPS=list(tbl['UKIDSS'][~mskukidss]),catalog='II/316/gps6')[0]
+    print(len(ukidss_match))
+    
     ukidss_match.rename_column('UGPS','UKIDSS')
-
-    mskukidss = tbl['UKIDSS'].mask
-    tbl['UKIDSS'].mask = False
     tbl['UKIDSS'][mskukidss] = -99999
+    
     rslt = table.join(tbl, ukidss_match, join_type='left', keys='UKIDSS')
-    rslt['UKIDSS'].mask = mskukidss
+    mskukidss = rslt['UKIDSS'] == '-99999'
+    
+    rslt['UKIDSS'][mskukidss] = np.ma.masked
+    rslt['UKIDSS'][mskukidss].mask = [mskukidss]
+    
+    rslt.sort('SPICY')
+    
     return rslt
+
+def add_UKIDSS_limits(tbl, limits={"J": 19.9,
+                  "H": 19.0,
+                  "K": 18.8,}):
+
+    for key in limits.keys():
+        if f'{key}mag' and f'{key}ell' in tbl.keys():
+            tbl[f'{key}ell'].fill_value = limits[key]
+            tbl[f'{key}ell'][tbl['NIR data'] == "UKIDSS"] = tbl[f'{key}ell'][tbl['NIR data'] == "UKIDSS"].filled()
+        else: print(f'{key} band not found.')
+        
+    return tbl
 
 def find_ALMAIMF_matches(tbl, coords):
     # determine number of SPICY sources in each ALMA FOV

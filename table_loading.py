@@ -448,8 +448,8 @@ def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
     return tbl
 
 # hacky function to extract the rows of an SED table as a plottable entry
-def getrow(tb, rownum, keys=['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0', 'S24', '70', '160', '250', '350', '500', 'ALMA-IMF_1mm_flux', 'ALMA-IMF_3mm_flux']):
-    return np.array([tb[rownum][key] for key in keys])
+def getrow(tbl, rownum, keys):
+    return np.array([tbl[rownum][key] for key in keys])
 
 apertures_VVV = {'Ymag': 1.415*u.arcsec,
                  'zmag': 1.415*u.arcsec,
@@ -478,35 +478,34 @@ apertures_ALMA = {'3mm': 3*u.arcsec,
 
 
 
-def get_data_to_fit(rownumber, tbl, filters=filternames):
-    
+def get_data_to_fit(rownumber, tbl, filters):
+    # remove all extraneous data from input table
     for key in filters:
         if key+"_flux" not in tbl.keys():
             tbl[key+"_flux"] = [np.nan for row in tbl]
             tbl[key+"_eflux"] = [np.nan for row in tbl]
-
+            
+    # extract fluxes and errors
     flx = getrow(tbl, rownumber, keys=[key+"_flux" for key in filters])
     error = getrow(tbl, rownumber, keys=[key+"_eflux" for key in filters])
-
     valid = np.zeros(flx.size, dtype='int')
-
-    # data to fit directly: both the flux and error are "valid"
-    valid[(np.isfinite(flx) & np.isfinite(error))] = 1
-
-    # data to ignore: neither the flux nor error are valid (nan or masked)
-    valid[(~np.isfinite(flx) & ~np.isfinite(error))] = 0
-
-    # data to treat as upper limits: the flux is not specified, but the error is
-    valid[(~np.isfinite(flx) & np.isfinite(error))] = 3
     
-    # toss any data points with exactly-0 values
+    # set flags based on validity of data
+    valid[(np.isfinite(flx) & np.isfinite(error))] = 1
+        # both the flux and error are "valid": data is fitted directly
+    valid[(~np.isfinite(flx) & ~np.isfinite(error))] = 0
+        # neither the flux nor error are valid (nan or masked): data is discarded
+    valid[(~np.isfinite(flx) & np.isfinite(error))] = 3
+        # flux is not specified, but the error is: treated as upper limit
+    
+    # error-proofing: toss any data points which measure exactly 0
     valid[flx == 0] = 0
     valid[error == 0] = 0
 
     # set the "flux" to be the 3-sigma error wherever we're treating it as an upper limit
     flx[valid == 3] = error[valid == 3] * 3
-    # then, set the confidence associated with that upper limit
-    error[valid == 3] = 0.997 # 0.997 is (approximately) 3-sigma
+    # then, set the confidence associated with that upper limit, AKA 3-sigma
+    error[valid == 3] = 0.997
     
     return flx, error, valid
 

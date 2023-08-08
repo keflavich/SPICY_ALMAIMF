@@ -326,7 +326,6 @@ def make_extinction():
     ext = F19(3.1)
     ext2 = CT06_MWLoc()
 
-
     # https://arxiv.org/abs/0903.2057
     # 1.34 is from memory
     guyver2009_avtocol = (2.21e21 * u.cm**-2 * (1.34*u.Da)).to(u.g/u.cm**2)
@@ -373,24 +372,21 @@ def get_fitter(geometry, aperture_size,
 
     return fitter
 
-def fit_a_source(data, error, valid, geometry='s-ubhmi',
-                 robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2/',
-                 extinction=make_extinction(), filters=filternames,
-                 aperture_size=3*u.arcsec, distance_range=[1.8, 2.2]*u.kpc,
-                 av_range=[4,40],
-                 fitter=None,
-                 stash_to_mmap=False,
+def fit_a_source(data, error, valid,
+                 geometry, robitaille_modeldir,
+                 extinction, filters, aperture_size, 
+                 distance_range, av_range, 
+                 fitter=None, stash_to_mmap=False,
                 ):
 
     source = Source()
-
     source.valid = valid
-    # if the data are given as a Jy-equivalent, convert them to mJy
-    # for cases where error is a percent, this should be a null action (so it should be OK...)
-    source.flux = u.Quantity(data, u.mJy).value
-    source.error =  u.Quantity(error, u.mJy).value
+    
     # https://sedfitter.readthedocs.io/en/stable/data.html
     # this site specifies that the fitter expects flux in mJy
+    # if the data are given as a Jy-equivalent, convert them to mJy
+    source.flux = u.Quantity(data, u.mJy).value
+    source.error =  u.Quantity(error, u.mJy).value
 
     if fitter is None:
         fitter = get_fitter(geometry=geometry, aperture_size=aperture_size,
@@ -411,8 +407,26 @@ def fit_a_source(data, error, valid, geometry='s-ubhmi',
         fitinfo.model_fluxes = fp
         print(f"Moved array with size {fitinfo.model_fluxes.shape} to {fp.filename}")
 
-
     return fitinfo
+
+# nested function for convenience
+def full_source_fit(rownum, filternames, apertures, robitaille_modeldir, extinction, distance_range, av_range):
+    flx, error, valid = get_data_to_fit(rownum, tbl, filters=filternames+["ALMA-IMF_1mm", "ALMA-IMF_3mm"])
+    ##optional: print out data points before fitting
+    #datatable = Table([flx, error, valid])
+    #print(datatable)
+    
+    fits = {geom:
+            fit_a_source(data=flx, error=error, valid=valid,
+                         geometry=geom, robitaille_modeldir=robitaille_modeldir,
+                         extinction=extinction,
+                         filters=filternames+["user_filters/ALMA-IMF_1mm", "user_filters/ALMA-IMF_3mm"],
+                         aperture_size=apertures,
+                         distance_range=distance_range,
+                         av_range=av_range
+                      )
+            for geom in tqdm_notebook(geometries, desc = f'Fitting source {rownum+1}/{len(tbl)}')}
+    return fits
 
 magcols = ['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0']
 emagcols = ['Yell', 'Zell', 'Jell', 'Hell', 'KsEll','e_mag3_6', 'e_mag4_5', 'e_mag5_8', 'e_mag8_0']

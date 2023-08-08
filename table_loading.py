@@ -345,11 +345,11 @@ def make_extinction():
 
 sed_filters, wavelength_dict, filternames, zpts = get_filters()
 
-def get_fitter(geometry='s-ubhmi', aperture_size=3*u.arcsec,
-               distance_range=[1.8, 2.2]*u.kpc,
-               robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2/',
-               filters=filternames, extinction=make_extinction(),
-               av_range=[4,40]):
+def get_fitter(geometry, aperture_size,
+               distance_range,
+               robitaille_modeldir,
+               filters, extinction,
+               av_range):
 
     # Define path to models
     model_dir = f'{robitaille_modeldir}/{geometry}'

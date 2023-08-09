@@ -342,8 +342,6 @@ def make_extinction():
 
     return extinction
 
-sed_filters, wavelength_dict, filternames, zpts = get_filters()
-
 def get_fitter(geometry, aperture_size,
                distance_range,
                robitaille_modeldir,

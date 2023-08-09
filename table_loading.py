@@ -426,9 +426,6 @@ def full_source_fit(rownum, filternames, apertures, robitaille_modeldir, extinct
             for geom in tqdm_notebook(geometries, desc = f'Fitting source {rownum+1}/{len(tbl)}')}
     return fits
 
-magcols = ['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0']
-emagcols = ['Yell', 'Zell', 'Jell', 'Hell', 'KsEll','e_mag3_6', 'e_mag4_5', 'e_mag5_8', 'e_mag8_0']
-
 def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
     # convert magnitudes to fluxes
     # (it's a pain to try to deal with a mix of magnitudes & fluxes)

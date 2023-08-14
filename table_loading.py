@@ -670,46 +670,148 @@ Herschel_Beams = {'70': np.pi*9.7*10.7*u.arcsec**2 / (8*np.log(2)),
 
 if __name__ == "__main__":
 
-    fulltbl, coords = get_spicy_tbl()
-    fulltbl = find_ALMAIMF_matches(fulltbl)
-    tblmsk = fulltbl['in_ALMAIMF']
-    tbl = fulltbl[tblmsk]
-    coords = coords[tblmsk]
+    # fetch SPICY catalogue
+    tbl, coords = get_spicy_tbl()
+    # find which SPICY sources are in each ALMA FOV
+    tbl = find_ALMAIMF_matches(tbl, coords)
+    # reduce table to only the shared sources
+    tblmsk = tbl['in_ALMAIMF']
+    tbl, coords = tbl[tblmsk], coords[tblmsk]
 
-    print("Adding Herschel data")
-    tbl = add_herschel_limits(tbl, coords)
-    print("Adding MIPS match data")
-    tbl = add_MIPS_matches(tbl)
-    print("Adding MIPS limit data")
-    tbl = add_mips_limits(tbl, coords)
-    print("Adding VVV data")
-    tbl = add_VVV_matches(tbl)
+    # mark rows by what NIR data is available
+    has_ukidss = [row['UKIDSS'] != '                   ' for row in tbl]
+    has_virac = [row['VIRAC'] is not np.ma.masked for row in tbl]
+    tbl.add_column("      ",name='NIR data')
+    tbl['NIR data'][has_ukidss] = "UKIDSS"
+    tbl['NIR data'][has_virac] = "VIRAC"
+
+    # append SPICY upper limits
+    print("Adding SPICY upper limits")
+    tbl = add_spicylimits(tbl)
+    # append ALMA-IMF photometry
     print("Adding ALMA-IMF photometry")
     tbl = add_alma_photometry(tbl, band='b3', wlname='3mm')
     tbl = add_alma_photometry(tbl, band='b6', wlname='1mm')
 
-    tbl = mag_to_flux(tbl, magcols, emagcols, zpts, filternames)
+    # convert ALMA-IMF fluxes to mJy/beam
+    print("Converting ALMA fluxes to mJy/beam")
+    for colname in ['ALMA-IMF_3mm_flux', 'ALMA-IMF_3mm_eflux', 'ALMA-IMF_1mm_flux', 'ALMA-IMF_1mm_eflux']:
+        tbl[colname] = tbl[colname] * u.Jy / u.beam
+        tbl[colname] = tbl[colname].to(u.mJy / u.beam)
 
-    # rename some columns for convenience later
-    # the Herschel bands will all be treated as upper limits, so we put them in as errors-only
+    # add MIPS data points and upper limits
+    print("Adding MIPS match data")
+    tbl = add_MIPS_matches(tbl)
+    print("Adding MIPS limit data")
+    tbl = add_mips_limits(tbl, coords)
+    tbl.sort('SPICY') # previous function messes row order
+
+    # populate MIPS error column with upper limits, rename MIPS columns
+    tbl['e_S24'][tbl['e_S24'].mask] = tbl['M24_flux_uplim'][tbl['e_S24'].mask]
+    tbl.rename_column('S24', 'Spitzer/MIPS.24mu_flux')
+    tbl.rename_column('e_S24', 'Spitzer/MIPS.24mu_eflux')
+
+    # add VVV data points, populate errors with upper limits
+    print("Adding VVV data")
+    tbl = add_VVV_matches(tbl)
+    tbl.rename_column('KsEll', 'Ksell') # so that add_VVV_limits works right
+    print("Adding VVV upper limits")
+    tbl = add_VVV_limits(tbl)
+    
+    # append UKIDSS data points for matches
+    print("Adding UKIDSS data")
+    tbl = add_UKIDSS_matches(tbl)
+
+    # table column housekeeping
+    tbl['Jmag_1'][tbl['NIR data'] == "UKIDSS"] = tbl['Jmag_2'][tbl['NIR data'] == "UKIDSS"] # move J data
+    tbl.rename_column('Jmag_1', 'Jmag')
+    tbl['Jell'][tbl['NIR data'] == "UKIDSS"] = tbl['e_Jmag'][tbl['NIR data'] == "UKIDSS"]
+    tbl['Hmag_1'][tbl['NIR data'] == "UKIDSS"] = tbl['Hmag_2'][tbl['NIR data'] == "UKIDSS"] # move H data
+    tbl.rename_column('Hmag_1', 'Hmag')
+    tbl['Hell'][tbl['NIR data'] == "UKIDSS"] = tbl['e_Hmag'][tbl['NIR data'] == "UKIDSS"]
+    tbl.rename_column('Kmag1', 'Kmag') # tweak K column
+    tbl.rename_column('e_Kmag1', 'Kell')
+    
+    # populate UKIDSS errors with upper limits
+    print("Adding UKIDSS upper limits")
+    tbl = add_UKIDSS_limits(tbl)
+
+    # append Herschel data points
+    print("Adding Herschel limits")
+    tbl = add_herschel_limits(tbl, coords)
+
+    # all Herschel values will be treated as upper limits
+    print("Converting Herschel fluxes to upper limits")
     tbl["Herschel/Pacs.blue_eflux"] = (tbl['70' ].quantity * u.pixel).to(u.mJy)
     tbl["Herschel/Pacs.red_eflux"]  = (tbl['160'].quantity * u.pixel).to(u.mJy)
     tbl["Herschel/SPIRE.PSW_eflux"] = (tbl['250'].quantity * Herschel_Beams['250']).to(u.mJy)
     tbl["Herschel/SPIRE.PMW_eflux"] = (tbl['350'].quantity * Herschel_Beams['350']).to(u.mJy)
     tbl["Herschel/SPIRE.PLW_eflux"] = (tbl['500'].quantity * Herschel_Beams['500']).to(u.mJy)
-
-    # now we make all the Herschel band fluxes NaN
-    tbl["Herschel/Pacs.blue_flux"] = np.nan 
-    tbl["Herschel/Pacs.red_flux"]  = np.nan
-    tbl["Herschel/SPIRE.PSW_flux"] = np.nan 
-    tbl["Herschel/SPIRE.PMW_flux"] = np.nan 
-    tbl["Herschel/SPIRE.PLW_flux"] = np.nan 
-
-    tbl.rename_column('S24', 'Spitzer/MIPS.24mu_flux')
-    tbl.rename_column('e_S24', 'Spitzer/MIPS.24mu_eflux')
+    for x in ['Pacs.blue','Pacs.red','SPIRE.PSW','SPIRE.PMW','SPIRE.PLW']:
+        tbl[f"Herschel/{x}_flux"] = np.nan 
     
-    # now we set all values for rows where there is no measurement to be the upper limit
-    tbl['Spitzer/MIPS.24mu_eflux'][tbl['Spitzer/MIPS.24mu_flux'].mask] = (tbl['M24_flux_uplim'][tbl['Spitzer/MIPS.24mu_flux'].mask].quantity * 2*np.pi*(6*u.arcsec)**2/(8*np.log(2))).to(u.mJy)
+    # housekeeping
+    for errcolname in ['Zell','Yell','Jell','Hell','Kell','Ksell']:
+        tbl[errcolname].unit = 'mag'
+        
+    # VIRAC mag-to-flux conversion
+    # acquire filternames and zero points
+    sed_filters, wavelength_dict, filternames, zpts = get_filters("south")
+    # define magcols and emagcols, for VIRAC fields
+    magcols = ['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0']
+    emagcols = ['Yell', 'Zell', 'Jell', 'Hell', 'Ksell','e_mag3_6', 'e_mag4_5', 'e_mag5_8', 'e_mag8_0']
+    # convert magnitudes to fluxes
+    print("Converting magnitudes to fluxes")
+    tbl_virac = tbl[[n in virac_fields for n in tbl['ALMAIMF_FIELDID']]]
+    tbl_virac = mag_to_flux(tbl_virac, magcols, emagcols, zpts, filternames)
+    
+    # UKIDSS mag-to-flux conversion
+    # acquire filternames and zero points
+    sed_filters, wavelength_dict, filternames, zpts = get_filters("north")
+    # define magcols and emagcols, for UKIDSS fields
+    magcols = ['Jmag', 'Hmag', 'Kmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0']
+    emagcols = ['Jell', 'Hell', 'Kell','e_mag3_6', 'e_mag4_5', 'e_mag5_8', 'e_mag8_0']
+    # convert magnitudes to fluxes
+    print("Converting magnitudes to fluxes")
+    tbl_ukidss = tbl[[n in ukidss_fields for n in tbl['ALMAIMF_FIELDID']]]
+    tbl_ukidss = mag_to_flux(tbl_ukidss, magcols, emagcols, zpts, filternames)
 
-    os.chdir('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF')
-    tbl.write('SPICY_withAddOns.fits', overwrite=True)
+    # VIRAC mag-to-flux conversion
+    # acquire filternames and zero points
+    sed_filters, wavelength_dict, filternames, zpts = get_filters("south")
+    # define magcols and emagcols, for VIRAC fields
+    magcols = ['Ymag', 'Zmag', 'Jmag', 'Hmag', 'Ksmag','mag3_6', 'mag4_5', 'mag5_8', 'mag8_0']
+    emagcols = ['Yell', 'Zell', 'Jell', 'Hell', 'Ksell','e_mag3_6', 'e_mag4_5', 'e_mag5_8', 'e_mag8_0']
+    # convert magnitudes to fluxes
+    print("Converting magnitudes to fluxes")
+    tbl_virac = tbl[[n in virac_fields for n in tbl['ALMAIMF_FIELDID']]]
+    tbl_virac = mag_to_flux(tbl_virac, magcols, emagcols, zpts, filternames)
+
+    tbl = vstack([tbl_ukidss, tbl_virac])
+    tbl.sort('SPICY')
+
+    # add distances to each field, based on values in the ALMA-IMF paper
+    print("Adding distances")
+    distances = {"G10": 4.95,"G12": 2.4,"W43MM1": 5.5,"W43MM2": 5.5,"W43MM3": 5.5,"W51-E": 5.4,"W51IRS2": 5.4,"G338": 3.9,
+                 "G008": 3.4,"G327": 2.5,"G328": 2.5,"G333": 4.2,"G337": 2.7,"G351": 2.0,"G353": 2.0,}
+    tbl.add_column(0.00*u.kpc,name='Distance')
+    for key in distances:
+        tbl['Distance'][tbl['ALMAIMF_FIELDID'] == key] = distances[key]
+    
+    # cut table down to only necessary information
+    tbl = tbl['SPICY','ra','dec','l','b','ALMAIMF_FIELDID','Distance','NIR data',
+              'Spitzer/IRAC.I1_flux','Spitzer/IRAC.I1_eflux','Spitzer/IRAC.I2_flux','Spitzer/IRAC.I2_eflux',
+              'Spitzer/IRAC.I3_flux','Spitzer/IRAC.I3_eflux','Spitzer/IRAC.I4_flux','Spitzer/IRAC.I4_eflux',
+              'ALMA-IMF_3mm_flux','ALMA-IMF_3mm_eflux','ALMA-IMF_1mm_flux','ALMA-IMF_1mm_eflux',
+              'Spitzer/MIPS.24mu_flux','Spitzer/MIPS.24mu_eflux',
+              'UKIRT/UKIDSS.J_flux','UKIRT/UKIDSS.J_eflux','UKIRT/UKIDSS.H_flux','UKIRT/UKIDSS.H_eflux','UKIRT/UKIDSS.K_flux','UKIRT/UKIDSS.K_eflux',
+              'Paranal/VISTA.Ks_flux','Paranal/VISTA.Ks_eflux','Paranal/VISTA.Z_flux','Paranal/VISTA.Z_eflux','Paranal/VISTA.Y_flux','Paranal/VISTA.Y_eflux',
+              'Paranal/VISTA.J_flux','Paranal/VISTA.J_eflux','Paranal/VISTA.H_flux','Paranal/VISTA.H_eflux',
+              'Herschel/Pacs.blue_flux','Herschel/Pacs.blue_eflux','Herschel/Pacs.red_flux','Herschel/Pacs.red_eflux',
+              'Herschel/SPIRE.PMW_flux','Herschel/SPIRE.PMW_eflux','Herschel/SPIRE.PSW_flux','Herschel/SPIRE.PSW_eflux','Herschel/SPIRE.PLW_flux','Herschel/SPIRE.PLW_eflux']
+
+tbl.meta['description'] = None
+
+# save table as individual fits files per field
+for fieldid in np.unique(tbl['ALMAIMF_FIELDID']):
+    tbl[tbl['ALMAIMF_FIELDID'] == fieldid].write(f'/blue/adamginsburg/adamginsburg/SPICY_ALMAIMF/BriceTingle/Region_tables/Unfitted/{fieldid}', format='fits', overwrite=True)

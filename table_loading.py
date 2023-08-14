@@ -6,8 +6,7 @@ import glob
 import time
 
 # utility
-from tqdm import tqdm
-from tqdm.notebook import tqdm_notebook
+from tqdm.auto import tqdm
 
 # astropy
 from astropy.io import fits
@@ -423,7 +422,7 @@ def full_source_fit(rownum, filternames, apertures, robitaille_modeldir, extinct
                          distance_range=distance_range,
                          av_range=av_range
                       )
-            for geom in tqdm_notebook(geometries, desc = f'Fitting source {rownum+1}/{len(tbl)}')}
+            for geom in tqdm(geometries, desc = f'Fitting source {rownum+1}/{len(tbl)}')}
     return fits
 
 def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):

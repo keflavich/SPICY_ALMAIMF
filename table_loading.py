@@ -407,7 +407,7 @@ def fit_a_source(data, error, valid,
     return fitinfo
 
 # nested function for convenience
-def full_source_fit(rownum, filternames, apertures, robitaille_modeldir, extinction, distance_range, av_range):
+def full_source_fit(tbl, rownum, filternames, apertures, robitaille_modeldir, extinction, distance_range, av_range):
     flx, error, valid = get_data_to_fit(rownum, tbl, filters=filternames+["ALMA-IMF_1mm", "ALMA-IMF_3mm"])
     ##optional: print out data points before fitting
     #datatable = Table([flx, error, valid])

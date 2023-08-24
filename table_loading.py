@@ -133,11 +133,7 @@ def add_UKIDSS_matches(tbl):
     ukidss_match.rename_column('UGPS','UKIDSS')
     
     rslt = table.join(tbl, ukidss_match, join_type='left', keys='UKIDSS')
-    
-    mskukidss = rslt['UKIDSS'] != '                   '
-    rslt['UKIDSS'][~mskukidss] = np.ma.masked
-    rslt['UKIDSS'][~mskukidss].mask = [~mskukidss]
-
+  
     return rslt
 
 def add_UKIDSS_limits(tbl, limits={"J": 19.9,

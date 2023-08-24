@@ -131,16 +131,13 @@ def add_UKIDSS_matches(tbl):
     print(len(ukidss_match))
     
     ukidss_match.rename_column('UGPS','UKIDSS')
-    tbl['UKIDSS'][mskukidss] = -99999
     
     rslt = table.join(tbl, ukidss_match, join_type='left', keys='UKIDSS')
-    mskukidss = rslt['UKIDSS'] == '-99999'
     
-    rslt['UKIDSS'][mskukidss] = np.ma.masked
-    rslt['UKIDSS'][mskukidss].mask = [mskukidss]
-    
-    rslt.sort('SPICY')
-    
+    mskukidss = rslt['UKIDSS'] != '                   '
+    rslt['UKIDSS'][~mskukidss] = np.ma.masked
+    rslt['UKIDSS'][~mskukidss].mask = [~mskukidss]
+
     return rslt
 
 def add_UKIDSS_limits(tbl, limits={"J": 19.9,

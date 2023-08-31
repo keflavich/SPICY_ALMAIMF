@@ -13,6 +13,34 @@ from astropy.modeling.models import BlackBody
 
 import table_loading
 
+geometries = ['s-pbhmi', 's-pbsmi',
+              'sp--h-i', 's-p-hmi', 
+              'sp--hmi', 'sp--s-i', 
+              's-p-smi', 'sp--smi', 
+              'spubhmi', 'spubsmi', 
+              'spu-hmi', 'spu-smi', 
+              's---s-i', 's---smi', 
+              's-ubhmi', 's-ubsmi', 
+              's-u-hmi', 's-u-smi']
+
+distances = {
+    "W51-E": 5.4,
+    "W43MM1": 5.5,
+    "G333": 4.2,
+    "W51IRS2": 5.4,
+    "G338": 3.9,
+    "G10": 4.95,
+    "W43MM2": 5.5,
+    "G008": 3.4,
+    "G12": 2.4,
+    "G327": 2.5,
+    "W43MM3": 5.5,
+    "G351": 2.0,
+    "G353": 2.0,
+    "G337": 2.7,
+    "G328": 2.5,
+}
+
 def find_mass_ul(tbl, row_num, regiondistance):
 <<<<<<< HEAD
     if not np.isnan(tbl[row_num]['ALMA-IMF_1mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_flux']):

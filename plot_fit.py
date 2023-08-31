@@ -94,9 +94,7 @@ def get_okgeo(fits,chi2limit=3,show=True):
 def get_modelcount(fits,okgeo,chi2limit=3):
     modelcount = 0
     for geom in okgeo:
-        for x in fits[geom].chi2:
-            if x < chi2limit:
-                modelcount = modelcount+1
+        modelcount = (fits[geom].chi2 < chi2limit).sum()
     return modelcount
 
 def get_chi2limit(fits):

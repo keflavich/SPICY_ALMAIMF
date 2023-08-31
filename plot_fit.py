@@ -13,6 +13,34 @@ from astropy.modeling.models import BlackBody
 
 import table_loading
 
+geometries = ['s-pbhmi', 's-pbsmi',
+              'sp--h-i', 's-p-hmi', 
+              'sp--hmi', 'sp--s-i', 
+              's-p-smi', 'sp--smi', 
+              'spubhmi', 'spubsmi', 
+              'spu-hmi', 'spu-smi', 
+              's---s-i', 's---smi', 
+              's-ubhmi', 's-ubsmi', 
+              's-u-hmi', 's-u-smi']
+
+distances = {
+    "W51-E": 5.4,
+    "W43MM1": 5.5,
+    "G333": 4.2,
+    "W51IRS2": 5.4,
+    "G338": 3.9,
+    "G10": 4.95,
+    "W43MM2": 5.5,
+    "G008": 3.4,
+    "G12": 2.4,
+    "G327": 2.5,
+    "W43MM3": 5.5,
+    "G351": 2.0,
+    "G353": 2.0,
+    "G337": 2.7,
+    "G328": 2.5,
+}
+
 def find_mass_ul(tbl, row_num, regiondistance):
 <<<<<<< HEAD
     if not np.isnan(tbl[row_num]['ALMA-IMF_1mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_flux']):
@@ -48,6 +76,34 @@ def find_mass_ul(tbl, row_num, regiondistance):
     #230 for 1mm, 100 for 3mm
 
     return(mass_ul)
+
+def get_okgeo(fits,chi2limit=3,show=True):
+    okgeo = []
+
+    for geom in geometries:
+        # we impose an _absolute_ chi^2 limit (the fitter uses a _relative_, delta chi2 limit)
+        if show:
+            print(f"{geom}: {np.nanmin(fits[geom].chi2):12.1f}")
+        if np.nanmin(fits[geom].chi2) < chi2limit:
+            okgeo.append(geom)
+    if show:
+        print(okgeo)
+        
+    return okgeo
+
+def get_modelcount(fits,okgeo,chi2limit=3):
+    modelcount = 0
+    for geom in okgeo:
+        modelcount = (fits[geom].chi2 < chi2limit).sum()
+    return modelcount
+
+def get_chi2limit(fits):
+    chi2min = np.nanmin([np.nanmin(fits[geom].chi2) for geom in geometries])
+    chi2limit = chi2min*3
+    if chi2limit < 3:
+        chi2limit = 3
+    return chi2limit, chi2min
+
 
 def datafunction(geom, chi2limit, bestfits, min_chi2=None):
     pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')

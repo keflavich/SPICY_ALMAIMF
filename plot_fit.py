@@ -49,6 +49,36 @@ def find_mass_ul(tbl, row_num, regiondistance):
 
     return(mass_ul)
 
+def get_okgeo(fits,chi2limit=3,show=True):
+    okgeo = []
+
+    for geom in geometries:
+        # we impose an _absolute_ chi^2 limit (the fitter uses a _relative_, delta chi2 limit)
+        if show:
+            print(f"{geom}: {np.nanmin(fits[geom].chi2):12.1f}")
+        if np.nanmin(fits[geom].chi2) < chi2limit:
+            okgeo.append(geom)
+    if show:
+        print(okgeo)
+        
+    return okgeo
+
+def get_modelcount(fits,okgeo,chi2limit=3):
+    modelcount = 0
+    for geom in okgeo:
+        for x in fits[geom].chi2:
+            if x < chi2limit:
+                modelcount = modelcount+1
+    return modelcount
+
+def get_chi2limit(fits):
+    chi2min = np.nanmin([np.nanmin(fits[geom].chi2) for geom in geometries])
+    chi2limit = chi2min*3
+    if chi2limit < 3:
+        chi2limit = 3
+    return chi2limit, chi2min
+
+
 def datafunction(geom, chi2limit, bestfits, min_chi2=None):
     pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
     fitinfo = bestfits[geom]

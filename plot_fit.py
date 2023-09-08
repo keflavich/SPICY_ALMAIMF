@@ -232,7 +232,6 @@ def plot_fit(fieldid, fits, okgeo, chi2limit, min_chi2=None, modelcount=None, sh
     print(wavelengths, wavelengths.value)
     apertures = u.Quantity([x['aperture_arcsec'] for x in fitinfo.meta.filters], u.arcsec)
     print(apertures)
-    
     #distance = (10**fitinfo.sc * u.kpc).mean()
 
     # preserve this parameter before loop

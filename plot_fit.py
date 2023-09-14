@@ -166,14 +166,20 @@ def binsfunction(param, kind, binsnum, chi2limit, geometries, bestfits, massnum=
 
     return bins
 
-def plot_fit(fieldid, fits, okgeo, chi2limit, min_chi2=None, modelcount=None, show_all_models=False, alpha_allmodels=None,
-             default_aperture=3000*u.au, show_per_aperture=True, extinction=make_extinction(), extinction_range=[0,60],
-             robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2'):
+def plot_fit(fieldid, spicyid, fits, okgeo=geometries, chi2limit=3, min_chi2=None,
+             modelcount=None, show_all_models=False, alpha_allmodels=None,
+             default_aperture=3000*u.au, show_per_aperture=True,
+             extinction=make_extinction(), extinction_range=[0,60],
+             robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2',
+             loc_imagedir='/blue/adamginsburg/adamginsburg/SPICY_ALMAIMF/BriceTingle/Location_figures'):
+
     """
     Parameters
     ----------
     fieldid : string
         'G328' (ex. - whatever your region is)
+    spicyid : number
+        31415 (ex. - whatever source you're looking at)
     fits : dict
         contains 18 sedfitter.fit_info.FitInfo objects, labeled per geometry
     okgeo : list
@@ -202,7 +208,12 @@ def plot_fit(fieldid, fits, okgeo, chi2limit, min_chi2=None, modelcount=None, sh
         [0,40] (ex. - the presumed lower and upper bounds on extinction)
     robitaille_modeldir : string
         filepath to the Robitaille models 
+    loc_imagedir : string
+        filepath to the location images (This should be a single folder containing
+        the location images for all sources to be fit, with the naming scheme of
+        "[fieldid]_[spicyid].png". plot_fit won't break if the image is missing.
     """
+    
     # --------------------------------
     # Set up plot surface
     # --------------------------------
@@ -229,9 +240,8 @@ def plot_fit(fieldid, fits, okgeo, chi2limit, min_chi2=None, modelcount=None, sh
     
     filters=filternames+["ALMA-IMF_1mm", "ALMA-IMF_3mm"]
     wavelengths = u.Quantity([wavelength_dict[fn] for fn in filters], u.um)
-    print(wavelengths, wavelengths.value)
     apertures = u.Quantity([x['aperture_arcsec'] for x in fitinfo.meta.filters], u.arcsec)
-    print(apertures)
+    
     #distance = (10**fitinfo.sc * u.kpc).mean()
 
     # preserve this parameter before loop
@@ -382,9 +392,23 @@ def plot_fit(fieldid, fits, okgeo, chi2limit, min_chi2=None, modelcount=None, sh
         if not np.isnan(mass_ul):
             for axis in [ax4,ax5,ax6]:
                 axis.axvline(mass_ul/u.M_sun, color='r', linestyle='dashed', linewidth=3)
-
-        fitinfo = bestfits_source[geom]
-
+                
         distances = 10**fits[geom].sc
         ax7.hist(distances[selection], bins=np.linspace(distances[selection].min(), distances[selection].max()), color=colors[geom])
         ax8.hist(fits[geom].av[selection], bins=np.linspace(extinction_range[0], extinction_range[1]), color=colors[geom])
+    
+        loc_imagepath = f'{loc_imagedir}/{fieldid}_{spicyid}.png'
+        if os.path.exists(loc_imagepath):
+            loc_image = mpimg.imread(loc_imagepath)
+            loc_image = np.flipud(loc_image)
+            ax9 = basefig.add_subplot(gs[0, 0])
+            ax9.imshow(loc_image)
+            ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid} | {modelcount} models\n', fontsize=25)
+            #ttl.set_position([.5, 1])
+            #ax9.axis([90,630,90,630])
+            ax9.axis([170,550,170,550])
+            ax9.axis('off')
+        else:
+            print(f"Figure {loc_imagepath} doesn't exist")
+    
+    return basefig

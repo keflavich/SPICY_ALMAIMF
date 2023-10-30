@@ -13,6 +13,26 @@ from astropy.modeling.models import BlackBody
 
 import table_loading
 
+ """
+    Necessary object
+    ----------
+    fit_results is a dict whose structure is as follows:
+    
+    for each source in the sample (spicyid):
+    {spicyid:
+        {'flux' : array
+        'error' : array
+        'valid : array
+        for each well-fitting model geometry (geom):
+        'geom':
+            {'model': list
+            'chi2' : list
+            'av' : list
+            'sc' : list}
+            }
+        }
+ """
+
 geometries = ['s-pbhmi', 's-pbsmi',
               'sp--h-i', 's-p-hmi', 
               'sp--hmi', 'sp--s-i', 
@@ -23,23 +43,60 @@ geometries = ['s-pbhmi', 's-pbsmi',
               's-ubhmi', 's-ubsmi', 
               's-u-hmi', 's-u-smi']
 
-distances = {
-    "W51-E": 5.4,
-    "W43MM1": 5.5,
-    "G333": 4.2,
-    "W51IRS2": 5.4,
-    "G338": 3.9,
-    "G10": 4.95,
-    "W43MM2": 5.5,
-    "G008": 3.4,
-    "G12": 2.4,
-    "G327": 2.5,
-    "W43MM3": 5.5,
-    "G351": 2.0,
-    "G353": 2.0,
-    "G337": 2.7,
-    "G328": 2.5,
-}
+def construct_fitinfo_tbl(fit_rslt):
+    fits = {}
+    for spicyid in tqdm(set(fit_rslt['SPICY'])):
+        per_source_tbl = fit_rslt[fit_rslt['SPICY'] == spicyid]
+        
+        fits[spicyid] = {}
+            
+        fits[spicyid]['flux'] = np.array([float(x) for x in per_source_tbl[0]['source.flux'].split(", ")])
+        fits[spicyid]['error'] = np.array([float(x) for x in per_source_tbl[0]['source.error'].split(", ")])
+        fits[spicyid]['valid'] = np.array([int(x) for x in per_source_tbl[0]['source.valid'].split(", ")])
+        
+        for geom in set(per_source_tbl['geometry']):
+            per_geom_tbl = per_source_tbl[per_source_tbl['geometry'] == geom]
+            
+            fits[spicyid][geom] = {}
+            
+            fits[spicyid][geom]['model'] = list(per_geom_tbl['MODEL_NAME'])
+            fits[spicyid][geom]['chi2'] = list(per_geom_tbl['chi2'])
+            fits[spicyid][geom]['av'] = list(per_geom_tbl['av'])
+            fits[spicyid][geom]['sc'] = list(per_geom_tbl['sc'])
+    return fits
+
+def field_lookup(spicyid):
+    field_lookup_dict = {'W43MM1':[92122, 92074],
+                         'W51IRS2':[102000, 102002, 102007],
+                         'G328':[31362, 31395, 31366, 31367, 31431, 31432, 31453, 31463, 31405, 31438, 31441, 31444, 31415, 31420, 31389, 31390, 31423],
+                         'G337':[40344, 40328, 40362, 40365, 40367, 40343, 40312, 40380, 40382, 40311],
+                         'W43MM3':[92076],
+                         'G327':[30375, 30411, 30414, 30416, 30423, 30425],
+                         'G353':[55873, 55876, 55881, 55853, 55858, 55859, 55924, 55862, 55896, 55932, 55901],
+                         'G12':[77504, 77443, 77507, 77447, 77416, 77452, 77454, 77428, 77462, 77465, 77498],
+                         'W43MM2':[92039, 92043, 92015, 91989, 92055, 92056],
+                         'G10':[75717, 75752, 75756, 75725, 75788, 75767, 75735, 75743],
+                         'G333':[36252, 36263],
+                         'G351':[54167, 54182, 54188, 54189, 54192, 54197, 54200, 54207, 54212, 54213, 54221, 54222, 54224, 54228, 54233, 54235, 54251, 54254, 54255, 54265, 54268],
+                         'G008':[73698, 73668, 73673, 73642, 73675, 73676, 73678, 73650, 73683, 73653, 73659, 73662, 73695],
+                         'W51-E':[102062, 102038],
+                         'G338':[40135, 40136, 40141, 40114, 40158]}
+    for fieldid in field_lookup_dict:
+        if spicyid in field_lookup_dict[fieldid]:
+            return fieldid
+    print("ID not valid or not in sample.")
+
+def distance_lookup(spicyid):
+    fieldid = field_lookup(spicyid)
+    if fieldid != None:
+        distance_lookup_dict = {"W51-E": 5.4,"W43MM1": 5.5,"G333": 4.2,
+                             "W51IRS2": 5.4,"G338": 3.9,"G10": 4.95,
+                             "W43MM2": 5.5,"G008": 3.4,"G12": 2.4,
+                             "G327": 2.5,"W43MM3": 5.5,"G351": 2.0,
+                             "G353": 2.0,"G337": 2.7,"G328": 2.5,}
+        return distance_lookup_dict[fieldid]
+    else:
+        print("ID not valid or not in sample.")
 
 def find_mass_ul(tbl, row_num, regiondistance):
 <<<<<<< HEAD

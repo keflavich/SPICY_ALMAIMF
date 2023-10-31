@@ -98,41 +98,57 @@ def distance_lookup(spicyid):
     else:
         print("ID not valid or not in sample.")
 
-def find_mass_ul(tbl, row_num, regiondistance):
-<<<<<<< HEAD
-    if not np.isnan(tbl[row_num]['ALMA-IMF_1mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_flux']):
-        alma_detect = tbl[row_num]['ALMA-IMF_1mm_flux']
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_flux']):
-        alma_detect = tbl[row_num]['ALMA-IMF_3mm_flux']
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(tbl[row_num]['ALMA-IMF_1mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_eflux']):
-        alma_detect = tbl[row_num]['ALMA-IMF_1mm_eflux']
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_eflux']):
-        alma_detect = tbl[row_num]['ALMA-IMF_3mm_eflux']
-        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
+def make_extinction():
+    # make an extinction law
+    ext = F19(3.1)
+    ext2 = CT06_MWLoc()
 
-=======
-    if not np.isnan(tbl[row_num]['ALMA-IMF_1mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_flux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_1mm_flux'].quantity * u.beam
-        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_flux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_flux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_3mm_flux'].quantity * u.beam
-        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(tbl[row_num]['ALMA-IMF_1mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_1mm_eflux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_1mm_eflux'].quantity * u.beam
-        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(tbl[row_num]['ALMA-IMF_3mm_eflux']) and not np.ma.isMA(tbl[row_num]['ALMA-IMF_3mm_eflux']): 
-        alma_detect = tbl[row_num]['ALMA-IMF_3mm_eflux'].quantity * u.beam
-        mass_ul = (((alma_detect) * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
-    else:
-        mass_ul = np.nan
+    # https://arxiv.org/abs/0903.2057
+    # 1.34 is from memory
+    guyver2009_avtocol = (2.21e21 * u.cm**-2 * (1.34*u.Da)).to(u.g/u.cm**2)
+    ext_wav = np.sort((np.geomspace(0.301, 8.699, 1000)/u.um).to(u.um, u.spectral()))
+    ext_vals = ext.evaluate(ext_wav, Rv=3.1)
+    
+    # extend the extinction curve out
+    ext_wav2 = np.geomspace(ext_wav.max(), 27*u.um, 100)
+    ext_vals2 = ext2.evaluate(ext_wav2)
         
->>>>>>> 71b75f64a174bd03d60b786c882cae7baefa3c77
-    #230 for 1mm, 100 for 3mm
+    extinction = Extinction()
+    extinction.wav = np.hstack([ext_wav, ext_wav2])
+    extinction.chi = np.hstack([ext_vals, ext_vals2]) / guyver2009_avtocol
 
+    return extinction
+
+def find_mass_ul(spicyid, fit_results):
+    regiondistance = distance_lookup(spicyid)
+    alma_1mm_flx = fit_results[spicyid]['flux'][len(fit_results[spicyid]['flux'])-2]
+    alma_3mm_flx = fit_results[spicyid]['flux'][len(fit_results[spicyid]['flux'])-1]
+    alma_1mm_err = fit_results[spicyid]['error'][len(fit_results[spicyid]['error'])-2]
+    alma_3mm_err = fit_results[spicyid]['error'][len(fit_results[spicyid]['error'])-1]
+    
+    if not np.isnan(alma_1mm_flx) and not np.ma.isMA(alma_1mm_flx): 
+        alma_detect = alma_1mm_flx
+        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
+    elif not np.isnan(alma_3mm_flx) and not np.ma.isMA(alma_3mm_flx): 
+        alma_detect = alma_3mm_flx
+        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
+    elif not np.isnan(alma_1mm_err) and not np.ma.isMA(alma_1mm_err): 
+        alma_detect = alma_1mm_err
+        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
+    elif not np.isnan(alma_3mm_err) and not np.ma.isMA(alma_3mm_err): 
+        alma_detect = alma_3mm_err        
+        mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
+    else:
+        mass_ul = np.nan  
+    #230 for 1mm, 100 for 3mm
     return(mass_ul)
+
+def get_approx_avrange(spicyid, fit_results):
+    okgeo = list(fit_results[spicyid].keys())[3:len(fit_results[spicyid])]
+    avmin = round(np.nanmin([np.nanmin(fit_results[spicyid][geom]['av']) for geom in okgeo]))
+    avmax = round(np.nanmax([np.nanmax(fit_results[spicyid][geom]['av']) for geom in okgeo]))
+    avrange = [avmin,avmax]
+    return avrange
 
 def get_okgeo(fits,chi2limit=3,show=True):
     okgeo = []
@@ -148,19 +164,20 @@ def get_okgeo(fits,chi2limit=3,show=True):
         
     return okgeo
 
-def get_modelcount(fits,okgeo,chi2limit=3):
+def get_modelcount(spicyid,fit_results):
     modelcount = 0
-    for geom in okgeo:
-        modelcount = (fits[geom].chi2 < chi2limit).sum()
+    for geom in geometries:
+        if geom in fit_results[spicyid].keys():
+            modelcount = modelcount+len(fit_results[spicyid][geom]['model'])
     return modelcount
 
-def get_chi2limit(fits):
-    chi2min = np.nanmin([np.nanmin(fits[geom].chi2) for geom in geometries])
-    chi2limit = chi2min*3
-    if chi2limit < 3:
-        chi2limit = 3
-    return chi2limit, chi2min
-
+def get_approx_chi2limit(spicyid,fit_results):
+    # because the data in these tables has already been cropped to a chi2limit,
+    # this function can just retrieve that chi2limit, or something close to it,
+    # by finding the max chi2 that was allowed for a source.
+    okgeo = list(fit_results[spicyid].keys())[3:len(fit_results[spicyid])]
+    chi2limit = np.ceil((np.nanmax([np.nanmax(fit_results[spicyid][geom]['chi2']) for geom in okgeo])))
+    return chi2limit
 
 def datafunction(geom, chi2limit, bestfits, min_chi2=None):
     pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
@@ -171,28 +188,37 @@ def datafunction(geom, chi2limit, bestfits, min_chi2=None):
     data = pars[fitinfo.model_id[selection]]
     return pars, data, selection
 
-def binsfunction(param, kind, binsnum, chi2limit, geometries, bestfits, massnum=9, min_chi2=None):
-    # note: the massnum indicates an index for aperture size, and is used in the
-    # parameters which involve multiple aperture sizes to select just one. you'll
-    # need to find out what your massnum= is if you use this.
-
+def binsfunction(param, kind, steps, spicyid, fit_results, robitaille_modeldir):
+    chi2limit=get_approx_chi2limit(spicyid,fit_results)   
+    default_aperture=3000*u.au
+    
     datamin = []
     datamax = []
-    for geom in geometries:
-        pars, data, selection = datafunction(geom, chi2limit, bestfits, min_chi2=min_chi2)
+    for geom in list(fit_results[spicyid].keys())[3:len(fit_results[spicyid])]:
+        fitinfo = fit_results[spicyid][geom]
+        model_dir = f'{robitaille_modeldir}/{geom}'
+        sedcube = SEDCube.read(f"{model_dir}/flux.fits",)
+        apnum = np.argmin(np.abs(default_aperture - sedcube.apertures))
+        
+        pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
+        pars.add_index('MODEL_NAME')
+        fitinfo = fit_results[spicyid][geom]
+        indices = [x < chi2limit for x in fitinfo['chi2']]
+        data = pars[[pars.loc_indices[x] for x in np.array(fitinfo['model'])[indices]]]
+        
         if param in pars.keys():
             if param == "Line-of-Sight Masses":
                 dataparam = data[param]
-                datamin.append(dataparam[massnum].min())
-                datamax.append(dataparam[massnum].max())
+                datamin.append(dataparam[:,apnum].min())
+                datamax.append(dataparam[:,apnum].max())
             elif param == "Sphere Masses":
                 dataparam = data[param]
-                datamin.append(dataparam[massnum].min())
-                datamax.append(dataparam[massnum].max())
+                datamin.append(dataparam[:,apnum].min())
+                datamax.append(dataparam[:,apnum].max())
             else:
                 datamin.append(data[param].min())
                 datamax.append(data[param].max())
-
+                
     # just some idiot-proofing because i ran into a problem with this
     datamin = np.array(datamin)
     datamin = datamin[datamin>0]
@@ -205,18 +231,17 @@ def binsfunction(param, kind, binsnum, chi2limit, geometries, bestfits, massnum=
     if kind == 'log':
         binsmin = np.log10(min(datamin))
         binsmax = np.log10(max(datamax))
-        bins = np.logspace(binsmin, binsmax, binsnum)
+        bins = np.logspace(binsmin, binsmax, steps)
 
     if kind == 'lin':
         binsmin = min(datamin)
         binsmax = max(datamax)
-        bins = np.linspace(binsmin, binsmax, binsnum)
+        bins = np.linspace(binsmin, binsmax, steps)
 
     if kind == 'geom':
         binsmin = min(datamin)
         binsmax = max(datamax)
-        bins = np.geomspace(binsmin, binsmax, binsnum)
-
+        bins = np.geomspace(binsmin, binsmax, steps)
 
     if np.any(np.isnan(bins)):
         raise ValueError('found a nan')

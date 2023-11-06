@@ -43,7 +43,7 @@ geometries = ['s-pbhmi', 's-pbsmi',
               's-ubhmi', 's-ubsmi', 
               's-u-hmi', 's-u-smi']
 
-def construct_fitinfo_tbl(fit_rslt):
+def deconstruct_fitinfo_tbl(fit_rslt):
     fits = {}
     for spicyid in tqdm(set(fit_rslt['SPICY'])):
         per_source_tbl = fit_rslt[fit_rslt['SPICY'] == spicyid]

@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.gridspec import GridSpec
 import matplotlib.image as mpimg
+from tqdm.auto import tqdm
 
 from astropy import units as u
 import sedfitter
@@ -11,9 +12,13 @@ from sedfitter.sed import SEDCube
 from astropy.table import Table
 from astropy.modeling.models import BlackBody
 
-import table_loading
+from sedfitter.extinction import Extinction
+from dust_extinction.parameter_averages import F19
+from dust_extinction.averages import CT06_MWLoc
 
- """
+from table_loading import *
+    
+"""
     Necessary object
     ----------
     fit_results is a dict whose structure is as follows:
@@ -31,7 +36,7 @@ import table_loading
             'sc' : list}
             }
         }
- """
+"""
 
 geometries = ['s-pbhmi', 's-pbsmi',
               'sp--h-i', 's-p-hmi', 
@@ -42,6 +47,24 @@ geometries = ['s-pbhmi', 's-pbsmi',
               's---s-i', 's---smi', 
               's-ubhmi', 's-ubsmi', 
               's-u-hmi', 's-u-smi']
+
+distances = {
+    "W51-E": 5.4,
+    "W43MM1": 5.5,
+    "G333": 4.2,
+    "W51IRS2": 5.4,
+    "G338": 3.9,
+    "G10": 4.95,
+    "W43MM2": 5.5,
+    "G008": 3.4,
+    "G12": 2.4,
+    "G327": 2.5,
+    "W43MM3": 5.5,
+    "G351": 2.0,
+    "G353": 2.0,
+    "G337": 2.7,
+    "G328": 2.5,
+}
 
 def deconstruct_fitinfo_tbl(fit_rslt):
     fits = {}
@@ -85,7 +108,7 @@ def field_lookup(spicyid):
         if spicyid in field_lookup_dict[fieldid]:
             return fieldid
     print("ID not valid or not in sample.")
-
+    
 def distance_lookup(spicyid):
     fieldid = field_lookup(spicyid)
     if fieldid != None:
@@ -185,7 +208,7 @@ def datafunction(geom, chi2limit, bestfits, min_chi2=None):
     if min_chi2 is None:
         min_chi2 = np.nanmin(fitinfo.chi2)
     selection = fitinfo.chi2 < chi2limit
-    data = pars[fitinfo.model_id[selection]]
+    data = pars[fitinfo['model'][selection]]
     return pars, data, selection
 
 def binsfunction(param, kind, steps, spicyid, fit_results, robitaille_modeldir):

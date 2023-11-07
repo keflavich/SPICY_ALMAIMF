@@ -4,6 +4,7 @@ import numpy as np
 import pylab as pl
 import glob
 import time
+import copy
 
 # utility
 from tqdm.auto import tqdm
@@ -418,6 +419,13 @@ def full_source_fit(tbl, rownum, filternames, apertures, robitaille_modeldir, ex
             for geom in tqdm(geometries, desc = f'Fitting source {rownum+1}/{len(tbl)}')}
     return fits
 
+def get_chi2limit(fits):
+    chi2min = np.nanmin([np.nanmin(fits[geom].chi2) for geom in geometries])
+    chi2limit = chi2min*3
+    if chi2limit < 3:
+        chi2limit = 3
+    return chi2limit, chi2min
+
 # turn the all_fitinfo dict object into an astropy table that can be written to a fits file
 def construct_fitinfo_tbl(all_fitinfo):
     init_tbl = Table(data=np.zeros(0, dtype=[('SPICY', 'int64'), ('geometry', 'str'),
@@ -433,7 +441,7 @@ def construct_fitinfo_tbl(all_fitinfo):
         n=0
         for geom in tqdm(geometries):
             fits = copy.deepcopy(all_fitinfo[spicyid][geom])
-            #fits.keep(('C', chi2limit))
+            fits.keep(('C', chi2limit))
             if n == 0:
                 current_tbl = copy.deepcopy(init_tbl)
             

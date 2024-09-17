@@ -4,6 +4,7 @@ import numpy as np
 import pylab as pl
 import glob
 import time
+import copy
 
 # utility
 from tqdm.auto import tqdm
@@ -417,6 +418,47 @@ def full_source_fit(tbl, rownum, filternames, apertures, robitaille_modeldir, ex
                       )
             for geom in tqdm(geometries, desc = f'Fitting source {rownum+1}/{len(tbl)}')}
     return fits
+
+def get_chi2limit(fits):
+    chi2min = np.nanmin([np.nanmin(fits[geom].chi2) for geom in geometries])
+    chi2limit = chi2min*3
+    if chi2limit < 3:
+        chi2limit = 3
+    return chi2limit, chi2min
+
+# turn the all_fitinfo dict object into an astropy table that can be written to a fits file
+def construct_fitinfo_tbl(all_fitinfo):
+    init_tbl = Table(data=np.zeros(0, dtype=[('SPICY', 'int64'), ('geometry', 'str'),
+                                      ('source.flux', 'str'),('source.error', 'str'),
+                                      ('source.valid', 'str'),('MODEL_NAME', 'str'),
+                                      ('chi2', 'float64'),('av', 'float64'),('sc', 'float64')]))
+    big_tbl = copy.deepcopy(init_tbl)
+    
+    for spicyid in tqdm(all_fitinfo):
+        print(spicyid)
+        chi2limit, chi2min = get_chi2limit(all_fitinfo[spicyid])
+    
+        n=0
+        for geom in tqdm(geometries):
+            fits = copy.deepcopy(all_fitinfo[spicyid][geom])
+            fits.keep(('C', chi2limit))
+            if n == 0:
+                current_tbl = copy.deepcopy(init_tbl)
+            
+            new_tbl = Table([[spicyid for x in fits.model_name],[geom for x in fits.model_name],
+                         [', '.join([str(x) for x in fits.source.flux]) for x in fits.model_name],
+                         [', '.join([str(x) for x in fits.source.error]) for x in fits.model_name],
+                         [', '.join([str(x) for x in fits.source.valid]) for x in fits.model_name],
+                         fits.model_name,fits.chi2,fits.av,fits.sc],
+                        names=('SPICY','geometry','source.flux','source.error','source.valid','MODEL_NAME', 'chi2','av','sc'))
+            if len(new_tbl) == 0:
+                new_tbl = copy.deepcopy(init_tbl)
+            
+            current_tbl = vstack([current_tbl,new_tbl])
+            n = n+1
+    
+        big_tbl = vstack([big_tbl,current_tbl])
+    return big_tbl
 
 def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
     # convert magnitudes to fluxes

@@ -362,12 +362,11 @@ def get_fitter(geometry, aperture_size,
 
     return fitter
 
-def fit_a_source(data, error, valid,
-                 geometry, robitaille_modeldir,
-                 extinction, filters, aperture_size, 
-                 distance_range, av_range, 
-                 fitter=None, stash_to_mmap=False,
-                ):
+def fit_a_source(data, error, valid, geometry='s-ubhmi',
+        robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2/',
+        extinction=make_extinction(), filters=get_filters(),
+        aperture_size=3*u.arcsec, distance_range=[1.8, 2.2]*u.kpc,
+        av_range=[4,40], fitter=None, stash_to_mmap=False,):
 
     source = Source()
     source.valid = valid

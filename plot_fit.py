@@ -18,31 +18,31 @@ from dust_extinction.parameter_averages import F19
 from dust_extinction.averages import CT06_MWLoc
 
 geometries = ['s-pbhmi', 's-pbsmi',
-              'sp--h-i', 's-p-hmi', 
-              'sp--hmi', 'sp--s-i', 
-              's-p-smi', 'sp--smi', 
-              'spubhmi', 'spubsmi', 
-              'spu-hmi', 'spu-smi', 
-              's---s-i', 's---smi', 
-              's-ubhmi', 's-ubsmi', 
+              'sp--h-i', 's-p-hmi',
+              'sp--hmi', 'sp--s-i',
+              's-p-smi', 'sp--smi',
+              'spubhmi', 'spubsmi',
+              'spu-hmi', 'spu-smi',
+              's---s-i', 's---smi',
+              's-ubhmi', 's-ubsmi',
               's-u-hmi', 's-u-smi']
 
 def deconstruct_fitinfo_tbl(fit_rslt):
     fits = {}
     for spicyid in tqdm(set(fit_rslt['SPICY'])):
         per_source_tbl = fit_rslt[fit_rslt['SPICY'] == spicyid]
-        
+
         fits[spicyid] = {}
-            
+
         fits[spicyid]['flux'] = np.array([float(x) for x in per_source_tbl[0]['source.flux'].split(", ")])
         fits[spicyid]['error'] = np.array([float(x) for x in per_source_tbl[0]['source.error'].split(", ")])
         fits[spicyid]['valid'] = np.array([int(x) for x in per_source_tbl[0]['source.valid'].split(", ")])
-        
+
         for geom in set(per_source_tbl['geometry']):
             per_geom_tbl = per_source_tbl[per_source_tbl['geometry'] == geom]
-            
+
             fits[spicyid][geom] = {}
-            
+
             fits[spicyid][geom]['model'] = list(per_geom_tbl['MODEL_NAME'])
             fits[spicyid][geom]['chi2'] = list(per_geom_tbl['chi2'])
             fits[spicyid][geom]['av'] = list(per_geom_tbl['av'])
@@ -68,8 +68,8 @@ def field_lookup(spicyid):
     for fieldid in field_lookup_dict:
         if spicyid in field_lookup_dict[fieldid]:
             return fieldid
-    print("ID not valid or not in sample.")
-    
+    raise ValueError("ID not valid or not in sample.")
+
 def distance_lookup(spicyid):
     fieldid = field_lookup(spicyid)
     if fieldid != None:
@@ -92,11 +92,11 @@ def make_extinction():
     guyver2009_avtocol = (2.21e21 * u.cm**-2 * (1.34*u.Da)).to(u.g/u.cm**2)
     ext_wav = np.sort((np.geomspace(0.301, 8.699, 1000)/u.um).to(u.um, u.spectral()))
     ext_vals = ext.evaluate(ext_wav, Rv=3.1)
-    
+
     # extend the extinction curve out
     ext_wav2 = np.geomspace(ext_wav.max(), 27*u.um, 100)
     ext_vals2 = ext2.evaluate(ext_wav2)
-        
+
     extinction = Extinction()
     extinction.wav = np.hstack([ext_wav, ext_wav2])
     extinction.chi = np.hstack([ext_vals, ext_vals2]) / guyver2009_avtocol
@@ -109,21 +109,21 @@ def find_mass_ul(spicyid, fit_results):
     alma_3mm_flx = fit_results[spicyid]['flux'][len(fit_results[spicyid]['flux'])-1]
     alma_1mm_err = fit_results[spicyid]['error'][len(fit_results[spicyid]['error'])-2]
     alma_3mm_err = fit_results[spicyid]['error'][len(fit_results[spicyid]['error'])-1]
-    
-    if not np.isnan(alma_1mm_flx) and not np.ma.isMA(alma_1mm_flx): 
+
+    if not np.isnan(alma_1mm_flx) and not np.ma.isMA(alma_1mm_flx):
         alma_detect = alma_1mm_flx
         mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(alma_3mm_flx) and not np.ma.isMA(alma_3mm_flx): 
+    elif not np.isnan(alma_3mm_flx) and not np.ma.isMA(alma_3mm_flx):
         alma_detect = alma_3mm_flx
         mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(alma_1mm_err) and not np.ma.isMA(alma_1mm_err): 
+    elif not np.isnan(alma_1mm_err) and not np.ma.isMA(alma_1mm_err):
         alma_detect = alma_1mm_err
         mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.008*u.cm**2/u.g * BlackBody(20*u.K)(230*u.GHz) * u.sr)).to(u.M_sun)
-    elif not np.isnan(alma_3mm_err) and not np.ma.isMA(alma_3mm_err): 
-        alma_detect = alma_3mm_err        
+    elif not np.isnan(alma_3mm_err) and not np.ma.isMA(alma_3mm_err):
+        alma_detect = alma_3mm_err
         mass_ul = (((alma_detect)*u.Jy * (regiondistance*u.kpc)**2) / (0.002*u.cm**2/u.g * BlackBody(20*u.K)(100*u.GHz) * u.sr)).to(u.M_sun)
     else:
-        mass_ul = np.nan  
+        mass_ul = np.nan
     #230 for 1mm, 100 for 3mm
     return(mass_ul)
 
@@ -145,7 +145,7 @@ def get_okgeo(fits,chi2limit=3,show=True):
             okgeo.append(geom)
     if show:
         print(okgeo)
-        
+
     return okgeo
 
 def get_modelcount(spicyid,fit_results):
@@ -188,13 +188,70 @@ def datafunction(geom, chi2limit, bestfits, min_chi2=None):
     if min_chi2 is None:
         min_chi2 = np.nanmin(fitinfo.chi2)
     selection = fitinfo.chi2 < chi2limit
-    data = pars[fitinfo['model'][selection]]
+    try:
+        data = pars[fitinfo['model'][selection]]
+    except TypeError:
+        data = pars[fitinfo.model_id[selection]]
     return pars, data, selection
 
-def binsfunction(param, kind, steps, spicyid, fit_results, robitaille_modeldir):
-    chi2limit=get_approx_chi2limit(spicyid,fit_results)   
+
+def binsfunction(param, kind, binsnum, chi2limit, geometries, bestfits, massnum=9, min_chi2=None):
+    # note: the massnum indicates an index for aperture size, and is used in the
+    # parameters which involve multiple aperture sizes to select just one. you'll
+    # need to find out what your massnum= is if you use this.
+
+    datamin = []
+    datamax = []
+    for geom in geometries:
+        pars, data, selection = datafunction(geom, chi2limit, bestfits, min_chi2=min_chi2)
+        if param in pars.keys():
+            if param == "Line-of-Sight Masses":
+                dataparam = data[param]
+                datamin.append(dataparam[:, massnum].min())
+                datamax.append(dataparam[:, massnum].max())
+            elif param == "Sphere Masses":
+                dataparam = data[param]
+                datamin.append(dataparam[:, massnum].min())
+                datamax.append(dataparam[:, massnum].max())
+            else:
+                datamin.append(data[param].min())
+                datamax.append(data[param].max())
+
+    # just some idiot-proofing because i ran into a problem with this
+    datamin = np.array(datamin)
+    datamin = datamin[datamin>0]
+    datamax = np.array(datamax)
+    datamax = datamax[datamax>0]
+
+    if len(datamin) == 0:
+        return
+
+    if kind == 'log':
+        binsmin = np.log10(min(datamin))
+        binsmax = np.log10(max(datamax))
+        bins = np.logspace(binsmin, binsmax, binsnum)
+
+    if kind == 'lin':
+        binsmin = min(datamin)
+        binsmax = max(datamax)
+        bins = np.linspace(binsmin, binsmax, binsnum)
+
+    if kind == 'geom':
+        binsmin = min(datamin)
+        binsmax = max(datamax)
+        bins = np.geomspace(binsmin, binsmax, binsnum)
+
+
+    if np.any(np.isnan(bins)):
+        raise ValueError('found a nan')
+
+    return bins
+
+def binsfunction_brice(param, kind, steps, spicyid, fit_results, robitaille_modeldir, chi2limit=None):
+    chi2limit=get_approx_chi2limit(spicyid,fit_results)
+
     default_aperture=3000*u.au
-    
+
     datamin = []
     datamax = []
     for geom in list(fit_results[spicyid].keys())[3:len(fit_results[spicyid])]:
@@ -202,13 +259,13 @@ def binsfunction(param, kind, steps, spicyid, fit_results, robitaille_modeldir):
         model_dir = f'{robitaille_modeldir}/{geom}'
         sedcube = SEDCube.read(f"{model_dir}/flux.fits",)
         apnum = np.argmin(np.abs(default_aperture - sedcube.apertures))
-        
+
         pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
         pars.add_index('MODEL_NAME')
         fitinfo = fit_results[spicyid][geom]
         indices = [x < chi2limit for x in fitinfo['chi2']]
         data = pars[[pars.loc_indices[x] for x in np.array(fitinfo['model'])[indices]]]
-        
+
         if param in pars.keys():
             if param == "Line-of-Sight Masses":
                 dataparam = data[param]
@@ -251,11 +308,11 @@ def binsfunction(param, kind, steps, spicyid, fit_results, robitaille_modeldir):
 
     return bins
 
-def plot_fit(spicyid,  fit_results, chi2limit=None, min_chi2=None,
-             show_all_models=False, alpha_allmodels=None, show_per_aperture=True,
-             show_full_param_range=False,
-             robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2',
-             loc_imagedir='/blue/adamginsburg/adamginsburg/SPICY_ALMAIMF/BriceTingle/Location_figures'):
+def plot_fit_brice(spicyid,  fit_results, chi2limit=None, min_chi2=None,
+                   show_all_models=False, alpha_allmodels=None, show_per_aperture=True,
+                   show_full_param_range=False,
+                   robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2',
+                   loc_imagedir='/blue/adamginsburg/adamginsburg/SPICY_ALMAIMF/BriceTingle/Location_figures'):
     """
     Parameters
     ----------
@@ -266,7 +323,7 @@ def plot_fit(spicyid,  fit_results, chi2limit=None, min_chi2=None,
     chi2limit : number
         chi2 value to serve as upper bound for limiting models shown
     min_chi2 : number
-        chi2 value to serve as lower bound for limiting models shown. 
+        chi2 value to serve as lower bound for limiting models shown.
         if None, min_chi2 will be recalculated for each geometry
     show_all_models : bool
         whether or not to show every model on the SED plot,
@@ -278,13 +335,13 @@ def plot_fit(spicyid,  fit_results, chi2limit=None, min_chi2=None,
     show_full_param_range : bool
         whether to display histogram data in context of the full parameter range
     robitaille_modeldir : string
-        filepath to the Robitaille models 
+        filepath to the Robitaille models
     loc_imagedir : string
         filepath to the location images (This should be a single folder containing
         the location images for all sources to be fit, with the naming scheme of
         "[fieldid]_[spicyid].png". plot_fit won't break if the image is missing.
     """
-    
+
     # --------------------------------
     # Set up plot surface
     # --------------------------------
@@ -296,9 +353,9 @@ def plot_fit(spicyid,  fit_results, chi2limit=None, min_chi2=None,
     # --------------------------------
     # Top-right: Best fits plot
     # --------------------------------
-    
+
     ax0 = basefig.add_subplot(gs[0, 1])
-        
+
     # create filter-related variables based on whether VVV or UKIDSS NIR data is expected
     fieldid = field_lookup(spicyid)
     if fieldid in ['G10','G12','W43MM1','W43MM2','W43MM3','W51-E','W51IRS2']:
@@ -311,16 +368,16 @@ def plot_fit(spicyid,  fit_results, chi2limit=None, min_chi2=None,
         filters=filternames+["ALMA-IMF_1mm", "ALMA-IMF_3mm"]
         wavelengths = u.Quantity([wavelength_dict[fn] for fn in filters], u.um)
         apertures = u.Quantity([1.415, 1.415, 1.415, 1.415, 1.415, 2.4, 2.4, 2.4, 2.4, 6, 10, 13.5, 23, 30, 41, 3, 3],u.arcsec)
-    
+
     extinction=make_extinction()
     default_aperture=3000*u.au
-    
+
     if chi2limit == None:
         chi2limit=get_approx_chi2limit(spicyid,fit_results)
-    
+
     modelcount = get_modelcount(spicyid,fit_results)
     okgeo = list(fit_results[spicyid].keys())[3:len(fit_results[spicyid])]
-    
+
     if show_all_models and alpha_allmodels is None:
         if modelcount <= 50:
             alpha_allmodels = 0.5
@@ -332,11 +389,11 @@ def plot_fit(spicyid,  fit_results, chi2limit=None, min_chi2=None,
             alpha_allmodels = 0.1
         if 2000 < modelcount:
             alpha_allmodels = 0.05
-            
+
     flx = fit_results[spicyid]['flux']
     err = fit_results[spicyid]['error']
     valid = fit_results[spicyid]['valid']
-    
+
     # preserve this parameter before loop
     recalc_min_chi2 = min_chi2 is None
     # store colors per geometry
@@ -359,7 +416,7 @@ def plot_fit(spicyid,  fit_results, chi2limit=None, min_chi2=None,
         line, = ax0.plot(sedcube.wav,
                  sed.flux[apnum] * distance_scale * av_scale,
                  label=geom, alpha=0.9)
-        
+
         colors[geom] = line.get_color()
 
         if recalc_min_chi2:
@@ -393,58 +450,58 @@ def plot_fit(spicyid,  fit_results, chi2limit=None, min_chi2=None,
 
     if recalc_min_chi2:
         min_chi2 = None
-            
+
     ax0.loglog()
     ax0.set_xlabel('Wavelength (microns)')
     ax0.set_ylabel("Flux (mJy)")
     ax0.set_xlim(0.5,1e4)
     ax0.set_ylim(5e-4,3e6)
-    
+
     # --------------------------------
     # Bottom: Parameter histograms
     # --------------------------------
-    
+
     mass_ul = find_mass_ul(spicyid, fit_results)
     extinction_range = get_approx_avrange(spicyid, fit_results)
     histogram_alpha = 0.8
     histogram_stepsize = 50
-    
+
     # stellar temperature
     ax1 = basefig.add_subplot(gs[1, 0])
     ax1.set_xlabel("Stellar Temperature (K)")
-    
+
     # model luminosity
     ax2 = basefig.add_subplot(gs[1, 1])
-    ax2.set_xlabel("Stellar Luminosity (L$_\odot$)")
+    ax2.set_xlabel("Stellar Luminosity (L$_\\odot$)")
     _=ax2.semilogx()
-    
+
     # stellar radius
     ax3 = basefig.add_subplot(gs[2, 0])
-    ax3.set_xlabel("Stellar Radius (R$_\odot$)")
+    ax3.set_xlabel("Stellar Radius (R$_\\odot$)")
     _=ax3.semilogx()
 
     # line-of-sight mass
     ax4 = basefig.add_subplot(gs[2, 1])
-    ax4.set_xlabel("Line-of-Sight Masses (M$_\odot$)")
+    ax4.set_xlabel("Line-of-Sight Masses (M$_\\odot$)")
     _=ax4.semilogx()
-    
+
     # disk mass
     ax5 = basefig.add_subplot(gs[3, 0])
-    ax5.set_xlabel("Disk Mass (M$_\odot$)")
+    ax5.set_xlabel("Disk Mass (M$_\\odot$)")
     _=ax5.semilogx()
-    
+
     # sphere mass
     ax6 = basefig.add_subplot(gs[3, 1])
-    ax6.set_xlabel("Sphere Mass (M$_\odot$)")
+    ax6.set_xlabel("Sphere Mass (M$_\\odot$)")
     _=ax6.semilogx()
-    
+
     if not show_full_param_range:
-        temperature_bins = binsfunction('star.temperature', 'lin', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
-        luminosity_bins = binsfunction('Model Luminosity', 'log', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
-        radius_bins = binsfunction('star.radius', 'log', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
-        los_bins = binsfunction('Line-of-Sight Masses', 'log', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
-        disk_bins = binsfunction('disk.mass', 'log', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
-        sphere_bins = binsfunction('Sphere Masses', 'log', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
+        temperature_bins = binsfunction_brice('star.temperature', 'lin', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
+        luminosity_bins = binsfunction_brice('Model Luminosity', 'log', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
+        radius_bins = binsfunction_brice('star.radius', 'log', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
+        los_bins = binsfunction_brice('Line-of-Sight Masses', 'log', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
+        disk_bins = binsfunction_brice('disk.mass', 'log', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
+        sphere_bins = binsfunction_brice('Sphere Masses', 'log', histogram_stepsize, spicyid, fit_results, robitaille_modeldir)
     else:
         radius_bins = np.logspace(-1, 3, 50)
         luminosity_bins = np.logspace(-4,7,100)
@@ -455,17 +512,17 @@ def plot_fit(spicyid,  fit_results, chi2limit=None, min_chi2=None,
 
     ax7 = basefig.add_subplot(gs[4, 0])
     ax7.set_xlabel("Distance (kpc)")
-    
+
     ax8 = basefig.add_subplot(gs[4, 1])
     ax8.set_xlabel("Extinction [$A_V$]")
-    
+
     for geom in okgeo:
         pars = Table.read(f'/blue/adamginsburg/richardson.t/research/flux/pars/{geom}_augmented.fits')
         pars.add_index('MODEL_NAME')
         fitinfo = fit_results[spicyid][geom]
         indices = [x < chi2limit for x in fitinfo['chi2']]
         data = pars[[pars.loc_indices[x] for x in np.array(fitinfo['model'])[indices]]]
-        
+
         if 'star.temperature' in pars.keys():
             ax1.hist(data['star.temperature'], bins=temperature_bins, alpha=histogram_alpha, label=geom, color=colors[geom])
         if 'Model Luminosity' in pars.keys():
@@ -500,11 +557,11 @@ def plot_fit(spicyid,  fit_results, chi2limit=None, min_chi2=None,
 
         handles, labels = ax1.get_legend_handles_labels()
         ax0.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.16,1.02))
-        
+
         # --------------------------------
         # Top left: Location figure
         # --------------------------------
-        
+
         loc_imagepath = f'{loc_imagedir}/{fieldid}_{spicyid}.png'
         if os.path.exists(loc_imagepath):
             loc_image = mpimg.imread(loc_imagepath)
@@ -518,5 +575,248 @@ def plot_fit(spicyid,  fit_results, chi2limit=None, min_chi2=None,
             ax9.axis('off')
         else:
             print(f"Figure {loc_imagepath} doesn't exist")
+
+    return basefig
+
+
+def plot_fit(bestfits_source, geometries_selection, chi2limit, mass_ul=None, fieldid=None,
+             spicyid=None, modelcount=None,
+             filepath='/blue/adamginsbug/adamginsburg/SPICY_ALMAIMF/',
+             extinction=table_loading.make_extinction(),
+             show_per_aperture=True, default_aperture=3000*u.au,
+             robitaille_modeldir='/blue/adamginsburg/richardson.t/research/flux/robitaille_models-1.2',
+             show_all_models=False, alpha_allmodels=None, verbose=True,
+             min_chi2=None,
+            ):
+
+    """
+    Parameters
+    ----------
+    fieldid : string
+         'G328' (ex. - whatever your region is)
+    spicyid : number
+         31415 (ex. - whatever source you're looking at)
+    name : string
+         'btingle' (ex. - however your name appears in your directory, aka /home/yourname)
+    """
+    # Setting up the plot surface
+    basefig = plt.figure(figsize=(20, 22))
+    gs = GridSpec(nrows=6, ncols=2, height_ratios=[4,1,1,1,1,1], hspace=0.25, wspace=0.1)
+
+    # --------------------------------
+
+    # Best fits plot
+    ax0 = basefig.add_subplot(gs[0, 1])
+    #wavelengths = u.Quantity([wavelength_dict[fn] for fn in filters], u.um)
+    fitinfo = bestfits_source[geometries_selection[0]]
+    source = fitinfo.source
+    valid = source.valid
+    wavelengths = u.Quantity([x['wav'] for x in fitinfo.meta.filters], u.um)
+    apertures = u.Quantity([x['aperture_arcsec'] for x in fitinfo.meta.filters], u.arcsec)
+
+    distance = (10**fitinfo.sc * u.kpc).mean()
+
+    # preserve this parameter before loop
+    recalc_min_chi2 = min_chi2 is None
+
+    # store colors per geometry
+    colors = {}
+
+    if show_all_models and alpha_allmodels is None:
+        if modelcount is None:
+            alpha_allmodels = 0.1
+        elif modelcount <= 50:
+            alpha_allmodels = 0.5
+        elif 50 < modelcount <= 100:
+            alpha_allmodels = 0.4
+        elif 100 < modelcount <= 1000:
+            alpha_allmodels = 0.3
+        elif 1000 < modelcount <= 2000:
+            alpha_allmodels = 0.1
+        elif 2000 < modelcount:
+            alpha_allmodels = 0.05
+
+    for geom in geometries_selection:
+
+        fitinfo = bestfits_source[geom]
+
+        model_dir = f'{robitaille_modeldir}/{geom}'
+        sedcube = SEDCube.read(f"{model_dir}/flux.fits",)
+
+
+
+        index = np.nanargmin(fitinfo.chi2)
+
+        distance = (10**fitinfo.sc[index] * u.kpc)
+
+        modelname = fitinfo.model_name[index]
+        sed = sedcube.get_sed(modelname)
+
+        #apnum = np.argmin(np.abs((default_aperture * distance).to(u.au, u.dimensionless_angles()) - sedcube.apertures))
+        apnum = np.argmin(np.abs(default_aperture - sedcube.apertures))
+
+        # https://github.com/astrofrog/sedfitter/blob/41dee15bdd069132b7c2fc0f71c4e2741194c83e/sedfitter/sed/sed.py#L64
+        distance_scale = (1*u.kpc/distance)**2
+
+        # https://github.com/astrofrog/sedfitter/blob/41dee15bdd069132b7c2fc0f71c4e2741194c83e/sedfitter/sed/sed.py#L84
+        av_scale = 10**((fitinfo.av[index] * extinction.get_av(sed.wav)))
+
+        line, = ax0.plot(sedcube.wav,
+                 sed.flux[apnum] * distance_scale * av_scale,
+                 label=geom, alpha=0.9)
+
+        colors[geom] = line.get_color()
+
+
+        if recalc_min_chi2:
+            min_chi2 = np.nanmin(fitinfo.chi2)
+        indices = fitinfo.chi2 < chi2limit
+
+        if show_all_models and any(indices):
+            dist_scs = ((1*u.kpc)/(10**fitinfo.sc[indices] * u.kpc))**2
+            mods = np.array([sedcube.get_sed(modelname).flux[apnum] for modelname in fitinfo.model_name[indices]])
+            av_scales = 10**((fitinfo.av[indices][:,None] * extinction.get_av(sed.wav)[None,:]))
+
+            lines = ax0.plot(sedcube.wav,
+                             (mods * dist_scs[:,None] * av_scales).T,
+                             alpha=alpha_allmodels,
+                             c=line.get_color())
+
+
+        if show_per_aperture:
+            apnums = np.array([
+                np.argmin(np.abs((apsize * distance).to(u.au, u.dimensionless_angles()) - sedcube.apertures))
+                for apsize in apertures])
+            wlids = np.array([
+                np.argmin(np.abs(ww - sedcube.wav)) for ww in wavelengths])
+            flux = np.array([sed.flux[apn, wavid].value for apn, wavid in zip(apnums, wlids)])
+
+            av_scale_conv = 10**((fitinfo.av[index] * extinction.get_av(wavelengths)))
+            flux = flux * distance_scale * av_scale_conv
+            ax0.scatter(wavelengths, flux, marker='s', s=apertures.value, c=line.get_color())
+
+    ax0.errorbar(wavelengths.value[valid==1], source.flux[valid==1], yerr=source.error[valid==1], linestyle='none', color='w', marker='o', markersize=10)
+    ax0.plot(wavelengths.value[valid==3], source.flux[valid==3], linestyle='none', color='w', marker='v', markersize=10)
+
+    if recalc_min_chi2:
+        min_chi2 = None
+
+    ax0.loglog()
+    ax0.set_xlabel('Wavelength (microns)')
+    ax0.set_ylabel("Flux (mJy)")
+    ax0.set_xlim(0.5,1e4)
+    ax0.set_ylim(5e-4,3e6)
+
+    # --------------------------------
+
+    # ax1 = stellar temperature
+    # ax2 = model luminosity
+
+    # ax3 = stellar radius
+    # ax4 = line-of-sight mass
+
+    # ax5 = disk mass
+    # ax6 = sphere mass
+
+    ax1 = basefig.add_subplot(gs[1, 0])
+    ax2 = basefig.add_subplot(gs[1, 1])
+    ax3 = basefig.add_subplot(gs[2, 0])
+    ax4 = basefig.add_subplot(gs[2, 1])
+    ax5 = basefig.add_subplot(gs[3, 0])
+    ax6 = basefig.add_subplot(gs[3, 1])
+    ax7 = basefig.add_subplot(gs[4, 0])
+    ax8 = basefig.add_subplot(gs[4, 1])
+
+
+    histalpha = 0.8
+    lognum = 50
+    linnum = 50
+
+    #tempbins = binsfunction('star.temperature', 'lin', linnum, chi2limit, geometries_selection, bestfits_source)
+    tempbins = np.linspace(2000, 30000, 50)
+    #lumbins = binsfunction('Model Luminosity', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
+    lumbins = np.logspace(-4,7,100)
+    #radbins = binsfunction('star.radius', 'log', lognum, chi2limit, geometries_selection, bestfits_source)
+    radbins = np.geomspace(0.1, 100, 50)
+    try:
+        losbins = binsfunction('Line-of-Sight Masses', 'log', 20, chi2limit, geometries_selection, bestfits_source, 0)
+    except ValueError:
+        losbins = np.geomspace(1e-4,10)
+    try:
+        dscbins = binsfunction('disk.mass', 'log', lognum, chi2limit, geometries_selection, bestfits_source, 0)
+    except ValueError:
+        # this is OK; some models don't have disks
+        pass
+    sphbins = binsfunction('Sphere Masses', 'log', 50, chi2limit, geometries_selection, bestfits_source)
+
+    # index values used above and below for mass-related parameters should, i think, be the same as your
+    # massnum index, which again has to do with aperture sizes
+
+    for geom in geometries_selection:
+        pars, data, selection = datafunction(geom, chi2limit, bestfits_source, min_chi2=min_chi2)
+
+        if 'star.temperature' in pars.keys():
+            ax1.hist(data['star.temperature'], bins=tempbins, alpha=histalpha, label=geom, color=colors[geom])
+
+        if 'Model Luminosity' in pars.keys():
+            ax2.hist(data['Model Luminosity'], bins=lumbins, alpha=histalpha, label=geom, color=colors[geom])
+
+        if 'star.radius' in pars.keys():
+            ax3.hist(data['star.radius'], bins=radbins, alpha=histalpha, label=geom, color=colors[geom])
+
+        if 'Line-of-Sight Masses' in pars.keys():
+            ax4.hist(data['Line-of-Sight Masses'][:,apnum], bins=losbins, alpha=histalpha, label=geom, color=colors[geom])
+            if mass_ul is not None:
+                ax4.axvline(mass_ul, color='r', linestyle='dashed', linewidth=3)
+
+        if 'disk.mass' in pars.keys():
+            ax5.hist(data['disk.mass'], bins=dscbins, alpha=histalpha, label=geom, color=colors[geom])
+            if mass_ul is not None:
+                ax5.axvline(mass_ul, color='r', linestyle='dashed', linewidth=3)
+
+        if 'Sphere Masses' in pars.keys() and any(data['Sphere Masses'][:,apnum]):
+            ax6.hist(data['Sphere Masses'][:,apnum], bins=sphbins, alpha=histalpha, label=geom, color=colors[geom])
+            if mass_ul is not None:
+                ax6.axvline(mass_ul, color='r', linestyle='dashed', linewidth=3)
+
+        fitinfo = bestfits_source[geom]
+
+        distances = 10**fitinfo.sc
+        ax7.hist(distances[selection], bins=np.linspace(distances[selection].min(), distances[selection].max()), color=colors[geom])
+
+        ax8.hist(fitinfo.av[selection], bins=np.linspace(np.nanmin(fitinfo.av[selection]), np.nanmax(fitinfo.av[selection])), color=colors[geom])
+
+    handles, labels = ax1.get_legend_handles_labels()
+    ax0.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.16,1.02))
+    ax1.set_xlabel("Stellar Temperature (K)")
+    ax2.set_xlabel("Stellar Luminosity (L$_\\odot$)")
+    ax3.set_xlabel("Stellar Radius (R$_\\odot$)")
+    ax4.set_xlabel("Line-of-Sight Masses (M$_\\odot$)")
+    ax5.set_xlabel("Disk Mass (M$_\\odot$)")
+    ax6.set_xlabel("Sphere Mass (M$_\\odot$)")
+    ax7.set_xlabel("Distance (kpc)")
+    ax8.set_xlabel("Extinction [$A_V$]")
+
+    _=ax2.semilogx()
+    _=ax3.semilogx()
+    _=ax4.semilogx()
+    _=ax5.semilogx()
+    _=ax6.semilogx()
+
+    # reading the saved image of the region with source location marked
+    figpath = f'{filepath}/Location_figures/{fieldid}/{spicyid}.png'
+    if os.path.exists(figpath):
+        locfig = mpimg.imread(figpath)
+        locfig = np.flipud(locfig)
+
+        ax9 = basefig.add_subplot(gs[0, 0])
+        ax9.imshow(locfig)
+        ttl = ax9.set_title(f'\n{fieldid}  |  SPICY {spicyid} | {modelcount} models\n', fontsize=25)
+        ttl.set_position([.5, 1])
+        #ax9.axis([90,630,90,630])
+        ax9.axis([170,550,170,550])
+        ax9.axis('off')
+    elif verbose:
+        print(f"Figure {figpath} doesn't exist")
 
     return basefig

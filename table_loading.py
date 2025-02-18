@@ -58,13 +58,13 @@ virac_fields = ['G008','G327','G328','G333','G337','G338','G351','G353']
 
 # define geometries, per Robitaille paper
 geometries = ['s-pbhmi', 's-pbsmi',
-              'sp--h-i', 's-p-hmi', 
-              'sp--hmi', 'sp--s-i', 
-              's-p-smi', 'sp--smi', 
-              'spubhmi', 'spubsmi', 
-              'spu-hmi', 'spu-smi', 
-              's---s-i', 's---smi', 
-              's-ubhmi', 's-ubsmi', 
+              'sp--h-i', 's-p-hmi',
+              'sp--hmi', 'sp--s-i',
+              's-p-smi', 'sp--smi',
+              'spubhmi', 'spubsmi',
+              'spu-hmi', 'spu-smi',
+              's---s-i', 's---smi',
+              's-ubhmi', 's-ubsmi',
               's-u-hmi', 's-u-smi']
 
 def get_spicy_tbl():
@@ -106,7 +106,7 @@ def add_VVV_matches(tbl):
     rslt = table.join(tbl, virac_match, join_type='left', keys='VIRAC')
     rslt.sort('SPICY')
     rslt['VIRAC'].mask = mskvirac
-    
+
     return rslt
 
 def add_VVV_limits(tbl, limits={"Y": 17,
@@ -120,20 +120,20 @@ def add_VVV_limits(tbl, limits={"Y": 17,
             tbl[f'{key}ell'].fill_value = limits[key]
             tbl[f'{key}ell'][tbl['NIR data'] == "VIRAC"] = tbl[f'{key}ell'][tbl['NIR data'] == "VIRAC"].filled()
         else: print(f'{key} band not found.')
-        
+
     return tbl
 
 def add_UKIDSS_matches(tbl):
     mskukidss = tbl['NIR data'] == "UKIDSS"
     row_limit = len(tbl)
-    
+
     ukidss_match = Vizier(row_limit=row_limit).query_constraints(UGPS=list(tbl['UKIDSS'][~mskukidss]),catalog='II/316/gps6')[0]
     print(len(ukidss_match))
-    
+
     ukidss_match.rename_column('UGPS','UKIDSS')
-    
+
     rslt = table.join(tbl, ukidss_match, join_type='left', keys='UKIDSS')
-  
+
     return rslt
 
 def add_UKIDSS_limits(tbl, limits={"J": 19.9,
@@ -145,7 +145,7 @@ def add_UKIDSS_limits(tbl, limits={"J": 19.9,
             tbl[f'{key}ell'].fill_value = limits[key]
             tbl[f'{key}ell'][tbl['NIR data'] == "UKIDSS"] = tbl[f'{key}ell'][tbl['NIR data'] == "UKIDSS"].filled()
         else: print(f'{key} band not found.')
-        
+
     return tbl
 
 def find_ALMAIMF_matches(tbl, coords):
@@ -174,11 +174,11 @@ def find_ALMAIMF_matches(tbl, coords):
 def show_source_on_spitzer(fieldid, coords, source=None,
                            basepath='/orange/adamginsburg/ALMA_IMF/2017.1.01355.L/RestructuredImagingResults',
                            mips=False):
-    
+
     tbl, coords = get_spicy_tbl()
     tbl = find_ALMAIMF_matches(tbl, coords)
     # tbl = Table.read('/blue/adamginsburg/adamginsburg/ALMA_IMF/SPICY_ALMAIMF/SPICY_withAddOns.fits')
-    
+
     pfxs = prefixes[fieldid]
     fig = show_fov_on_spitzer(**{key: f'{basepath}/{val}' for key,val in pfxs.items()},
                               fieldid=fieldid, spitzerpath=f'{basepath}/spitzer_datapath',
@@ -189,13 +189,13 @@ def show_source_on_spitzer(fieldid, coords, source=None,
     ww = cube.wcs.celestial
     ww._naxis = cube.shape[1:]
     matches = ww.footprint_contains(coords)
-    
+
     cc = coords[matches]
     ax = fig.gca()
-    
+
     tbl = tbl[matches]
     #tbl = tbl[tbl['ALMAIMF_FIELDID'] == fieldid]
-    
+
     try:
         if source == None:
             ax.plot(cc[0:len(cc)].fk5.ra.deg, cc[0:len(cc)].fk5.dec.deg, 'w*',
@@ -209,10 +209,10 @@ def show_source_on_spitzer(fieldid, coords, source=None,
             rownum = tbl.loc_indices[source]
             ax.plot(cc[rownum:rownum+1].fk5.ra.deg, cc[rownum:rownum+1].fk5.dec.deg, 'w*',
                     mfc='none', mec='w', markersize=17, transform=ax.get_transform('fk5'), )
-        
+
     except AttributeError:
         print("Failed")
-    
+
     return fig
 
 def get_filters(hemisphere='south'):
@@ -225,14 +225,14 @@ def get_filters(hemisphere='south'):
         # keep only the non "_ext" SPIRE filters (but we should look up which is more appropriate)
         spire_filters = SvoFps.get_filter_list(facility='Herschel', instrument='Spire')
         spire_filters = spire_filters[['_ext' not in fid for fid in spire_filters['filterID']]]
-        
+
         filter_meta = table.vstack([SvoFps.get_filter_list(facility='UKIRT', instrument='WFCAM'),
                                 SvoFps.get_filter_list(facility='Spitzer', instrument='IRAC'),
                                 SvoFps.get_filter_list(facility='Spitzer', instrument='MIPS')[0],
                                 SvoFps.get_filter_list(facility='Herschel', instrument='Pacs'),
                                 spire_filters,
                                ])
-        
+
     elif hemisphere == 'south':
         filternames = ['Paranal/VISTA.Y', 'Paranal/VISTA.Z', 'Paranal/VISTA.J', 'Paranal/VISTA.H', 'Paranal/VISTA.Ks',
                    'Spitzer/IRAC.I1', 'Spitzer/IRAC.I2', 'Spitzer/IRAC.I3', 'Spitzer/IRAC.I4', 'Spitzer/MIPS.24mu',
@@ -241,7 +241,7 @@ def get_filters(hemisphere='south'):
         # keep only the non "_ext" SPIRE filters (but we should look up which is more appropriate)
         spire_filters = SvoFps.get_filter_list(facility='Herschel', instrument='Spire')
         spire_filters = spire_filters[['_ext' not in fid for fid in spire_filters['filterID']]]
-        
+
         filter_meta = table.vstack([SvoFps.get_filter_list(facility='Paranal', instrument='VIRCAM'),
                                 SvoFps.get_filter_list(facility='Spitzer', instrument='IRAC'),
                                 SvoFps.get_filter_list(facility='Spitzer', instrument='MIPS')[0],
@@ -323,11 +323,11 @@ def make_extinction():
     guyver2009_avtocol = (2.21e21 * u.cm**-2 * (1.34*u.Da)).to(u.g/u.cm**2)
     ext_wav = np.sort((np.geomspace(0.301, 8.699, 1000)/u.um).to(u.um, u.spectral()))
     ext_vals = ext.evaluate(ext_wav, Rv=3.1)
-    
+
     # extend the extinction curve out
     ext_wav2 = np.geomspace(ext_wav.max(), 27*u.um, 100)
     ext_vals2 = ext2.evaluate(ext_wav2)
-        
+
     extinction = Extinction()
     extinction.wav = np.hstack([ext_wav, ext_wav2])
     extinction.chi = np.hstack([ext_vals, ext_vals2]) / guyver2009_avtocol
@@ -347,7 +347,7 @@ def get_fitter(geometry, aperture_size,
         apertures = u.Quantity([aperture_size]*len(filters))
     else:
         apertures = u.Quantity(aperture_size, u.arcsec)
-        
+
     if isinstance(filters, list):
         filters = np.array(filters)
 
@@ -370,7 +370,7 @@ def fit_a_source(data, error, valid, geometry='s-ubhmi',
 
     source = Source()
     source.valid = valid
-    
+
     # https://sedfitter.readthedocs.io/en/stable/data.html
     # this site specifies that the fitter expects flux in mJy
     # if the data are given as a Jy-equivalent, convert them to mJy
@@ -404,7 +404,7 @@ def full_source_fit(tbl, rownum, filternames, apertures, robitaille_modeldir, ex
     ##optional: print out data points before fitting
     #datatable = Table([flx, error, valid])
     #print(datatable)
-    
+
     fits = {geom:
             fit_a_source(data=flx, error=error, valid=valid,
                          geometry=geom, robitaille_modeldir=robitaille_modeldir,
@@ -432,7 +432,7 @@ def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
                 tbl[zpn+"_flux"] = flx = np.ma.masked_where(tbl[colname].mask, (zp * 10**(data.data/-2.5)).to(u.mJy))
             else:
                 tbl[zpn+"_flux"] = flx = (zp * 10**(data.data/-2.5)).to(u.mJy)
-                
+
             if hasattr(tbl[errcolname], 'mask') and hasattr(tbl[colname], 'mask'):
                 tbl[zpn+"_eflux"] = err = np.ma.masked_where(tbl[errcolname].mask, np.where(tbl[colname].mask, (zp * 10**(error.data/-2.5)).to(u.mJy), error.quantity / (1.09*u.mag) * flx.data))
             elif not hasattr(tbl[errcolname], 'mask') and hasattr(tbl[colname], 'mask'):
@@ -444,7 +444,7 @@ def mag_to_flux(tbl, magcols, emagcols, zpts, filternames):
             #err = tbl[errcolname] / (1.09*u.mag) * flx
             #tbl[zpn+"_eflux"] = err
         else: print(f'{colname} not found.')
-        
+
     return tbl
 
 # hacky function to extract the rows of an SED table as a plottable entry
@@ -484,12 +484,12 @@ def get_data_to_fit(rownumber, tbl, filters):
         if key+"_flux" not in tbl.keys():
             tbl[key+"_flux"] = [np.nan for row in tbl]
             tbl[key+"_eflux"] = [np.nan for row in tbl]
-            
+
     # extract fluxes and errors
     flx = getrow(tbl, rownumber, keys=[key+"_flux" for key in filters])
     error = getrow(tbl, rownumber, keys=[key+"_eflux" for key in filters])
     valid = np.zeros(flx.size, dtype='int')
-    
+
     # set flags based on validity of data
     valid[(np.isfinite(flx) & np.isfinite(error))] = 1
         # both the flux and error are "valid": data is fitted directly
@@ -497,7 +497,7 @@ def get_data_to_fit(rownumber, tbl, filters):
         # neither the flux nor error are valid (nan or masked): data is discarded
     valid[(~np.isfinite(flx) & np.isfinite(error))] = 3
         # flux is not specified, but the error is: treated as upper limit
-    
+
     # error-proofing: toss any data points which measure exactly 0
     valid[flx == 0] = 0
     valid[error == 0] = 0
@@ -506,7 +506,7 @@ def get_data_to_fit(rownumber, tbl, filters):
     flx[valid == 3] = error[valid == 3] * 3
     # then, set the confidence associated with that upper limit, AKA 3-sigma
     error[valid == 3] = 0.997
-    
+
     return flx, error, valid
 
 
@@ -668,7 +668,7 @@ if __name__ == "__main__":
   # reduce table to only the shared sources
   tblmsk = tbl['in_ALMAIMF']
   tbl, coords = tbl[tblmsk], coords[tblmsk]
-  
+
   # mark rows by what NIR data is available
   has_ukidss = [row['UKIDSS'] != '                   ' for row in tbl]
   has_virac = [row['VIRAC'] is not np.ma.masked for row in tbl]
@@ -708,7 +708,7 @@ if __name__ == "__main__":
   tbl.rename_column('KsEll', 'Ksell') # so that add_VVV_limits works right
   print("Adding VVV upper limits")
   tbl = add_VVV_limits(tbl)
-    
+
   # append UKIDSS data points for matches
   print("Adding UKIDSS data")
   tbl = add_UKIDSS_matches(tbl)
@@ -722,7 +722,7 @@ if __name__ == "__main__":
   tbl['Hell'][tbl['NIR data'] == "UKIDSS"] = tbl['e_Hmag'][tbl['NIR data'] == "UKIDSS"]
   tbl.rename_column('Kmag1', 'Kmag') # tweak K column
   tbl.rename_column('e_Kmag1', 'Kell')
-    
+
   # populate UKIDSS errors with upper limits
   print("Adding UKIDSS upper limits")
   tbl = add_UKIDSS_limits(tbl)
@@ -739,12 +739,12 @@ if __name__ == "__main__":
   tbl["Herschel/SPIRE.PMW_eflux"] = (tbl['350'].quantity * Herschel_Beams['350']).to(u.mJy)
   tbl["Herschel/SPIRE.PLW_eflux"] = (tbl['500'].quantity * Herschel_Beams['500']).to(u.mJy)
   for x in ['Pacs.blue','Pacs.red','SPIRE.PSW','SPIRE.PMW','SPIRE.PLW']:
-      tbl[f"Herschel/{x}_flux"] = np.nan 
-    
+      tbl[f"Herschel/{x}_flux"] = np.nan
+
   # housekeeping
   for errcolname in ['Zell','Yell','Jell','Hell','Kell','Ksell']:
       tbl[errcolname].unit = 'mag'
-        
+
   # VIRAC mag-to-flux conversion
   # acquire filternames and zero points
   sed_filters, wavelength_dict, filternames, zpts = get_filters("south")
@@ -755,7 +755,7 @@ if __name__ == "__main__":
   print("Converting magnitudes to fluxes")
   tbl_virac = tbl[[n in virac_fields for n in tbl['ALMAIMF_FIELDID']]]
   tbl_virac = mag_to_flux(tbl_virac, magcols, emagcols, zpts, filternames)
-    
+
   # UKIDSS mag-to-flux conversion
   # acquire filternames and zero points
   sed_filters, wavelength_dict, filternames, zpts = get_filters("north")
@@ -788,7 +788,7 @@ if __name__ == "__main__":
   tbl.add_column(0.00*u.kpc,name='Distance')
   for key in distances:
       tbl['Distance'][tbl['ALMAIMF_FIELDID'] == key] = distances[key]
-    
+
   # cut table down to only necessary information
   tbl = tbl['SPICY','ra','dec','l','b','ALMAIMF_FIELDID','Distance','NIR data',
             'Spitzer/IRAC.I1_flux','Spitzer/IRAC.I1_eflux','Spitzer/IRAC.I2_flux','Spitzer/IRAC.I2_eflux',
